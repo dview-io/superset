@@ -92,8 +92,16 @@ import isDashboardLoading from '../../util/isDashboardLoading';
 import { useChartIds } from '../../util/charts/useChartIds';
 import { useDashboardMetadataBar } from './useDashboardMetadataBar';
 import { useHeaderActionsMenu } from './useHeaderActionsDropdownMenu';
+import {Modal} from 'antd-v5';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import ChatBotDialog from './ChatBot';
 
 const extensionsRegistry = getExtensionsRegistry();
+const muiTheme = createTheme({
+  palette: {
+    mode: 'light',
+  },
+});
 
 const headerContainerStyle = theme => css`
   border-bottom: 1px solid ${theme.colors.grayscale.light2};
@@ -172,12 +180,18 @@ const Header = () => {
   const [showingReportModal, setShowingReportModal] = useState(false);
   const [currentReportDeleting, setCurrentReportDeleting] = useState(null);
   const dashboardInfo = useSelector(state => state.dashboardInfo);
+  console.log('gaurav',dashboardInfo);
   const layout = useSelector(state => state.dashboardLayout.present);
   const undoLength = useSelector(state => state.dashboardLayout.past.length);
   const redoLength = useSelector(state => state.dashboardLayout.future.length);
   const dataMask = useSelector(state => state.dataMask);
   const user = useSelector(state => state.user);
   const chartIds = useChartIds();
+  const [showDsenseChat,setShowDsenseChat]=useState(false);
+
+  const handleDsense=()=>{
+    setShowDsenseChat(true);
+  }
 
   const {
     expandedSlices,
@@ -667,6 +681,10 @@ const Header = () => {
         ) : (
           <div css={actionButtonsStyle}>
             {NavExtension && <NavExtension />}
+            <div style={{marginRight:'4px'}}><ThemeProvider theme={muiTheme}>
+    <ChatBotDialog dashboardId={dashboardInfo.id} />
+  </ThemeProvider></div>
+      
             {userCanEdit && (
               <Button
                 buttonStyle="secondary"
