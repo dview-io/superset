@@ -26,6 +26,7 @@ import sys
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
+from superset.dsense import flask_app_mutator
 
 logger = logging.getLogger()
 
@@ -98,8 +99,15 @@ class CeleryConfig:
 
 
 CELERY_CONFIG = CeleryConfig
+logging.warning("CORTEX_ENDPOINT = %s", os.getenv("CORTEX_ENDPOINT"))
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True}
+FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
+"COSMOS_ENDPOINT":os.getenv('COSMOS_ENDPOINT'),
+
+"DEFAULT_CATALOG":os.getenv('DEFAULT_CATALOG'),
+
+"LOGIN_USERNAME":os.getenv('LOGIN_USERNAME'),
+"LOGIN_PASSWORD":os.getenv('LOGIN_PASSWORD')}
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
 # The base URL for the email report hyperlinks.
@@ -136,3 +144,8 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+
+COSMOS_ENDPOINT=os.getenv('COSMOS_ENDPOINT')
+FLASK_APP_MUTATOR = flask_app_mutator
+
