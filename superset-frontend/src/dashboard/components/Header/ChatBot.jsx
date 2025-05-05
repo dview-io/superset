@@ -178,11 +178,21 @@ export default function ChatBotDialog({ dashboardId }) {
     const fetchData = async () => {
       const token = await hitLogin();
       console.log('gaurav log', token);
+      let catalog = [];
+      if (DEFAULT_CATALOG) {
+        catalog = [DEFAULT_CATALOG];
+      }
+
+      payload = {
+        catalogs: catalog,
+        schemas: [],
+        tables: [],
+      };
       if (token) {
         try {
           const data = await callApi({
             parseMethod: 'json',
-            url: `${CORTEX_ENDPOINT_NEW}/stateless/?catalog=${DEFAULT_CATALOG}`,
+            url: `${CORTEX_ENDPOINT_NEW}/chat/`,
             method: 'POST',
             mode: 'cors',
             headers: {
@@ -200,7 +210,7 @@ export default function ChatBotDialog({ dashboardId }) {
             text: `${selectedChart.name} chart is selected. Ask a question.`,
             sender: 'bot',
             timestamp: new Date(),
-            error: false,
+            error: true,
           };
 
           setMessages(prev => [...prev, botResponse]);
@@ -361,11 +371,20 @@ export default function ChatBotDialog({ dashboardId }) {
     setUnread(0);
   };
   const sendDsenseMessage = async prompt => {
+    const sql_query = {
+      sql: 'SELECT * FROM databricks.tpcds.catalog_sales LIMIT 100',
+    };
+    const new_prompt = `You are an expert data analyst.
+Use the ${DEFAULT_CATALOG} catalog to run and interpret the following SQL query:
+	${sql_query.sql}
+The business question is: ${prompt}
+Instructions:
+	1. First, explain in plain business terms what this SQL query is doing.
+	2. Then, provide a direct answer to the business question based on what the query returns.`;
     try {
       const response_from_dsense = await callApi({
-        timeout: 9000,
         parseMethod: 'json',
-        url: `${CORTEX_ENDPOINT_NEW}/stateless/${datasetId}/ask?prompt=${prompt}`,
+        url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
         method: 'POST',
         mode: 'cors',
         headers: {
@@ -446,7 +465,11 @@ export default function ChatBotDialog({ dashboardId }) {
           {explanationComponent}
           {!msg.error ? (
             <div
-              style={{ marginBottom: '12px', color: '#555', fontSize: '0.95rem' }}
+              style={{
+                marginBottom: '12px',
+                color: '#555',
+                fontSize: '0.95rem',
+              }}
             >
               <span style={{ color: '#555' }}>Answer:</span>
               <TypingText text={msg.text} speed={30} />
@@ -454,7 +477,6 @@ export default function ChatBotDialog({ dashboardId }) {
           ) : (
             <TypingText text={msg.text} speed={30} />
           )}
-        
         </div>
       );
     }
@@ -463,9 +485,16 @@ export default function ChatBotDialog({ dashboardId }) {
   };
 
   const handleSend = () => {
+    if (isTyping) {
+      setAlertContent(
+        'Dsense is fetching response.Send message once it is done.',
+      );
+      setOpenAlert(true);
+      return null;
+    }
     if (input.trim() && selectedChart) {
       const userMessage = {
-        text: input,
+        text: input.trim(),
         sender: 'user',
         timestamp: new Date(),
       };
@@ -479,6 +508,7 @@ export default function ChatBotDialog({ dashboardId }) {
       setAlertContent('No chart is selected');
       setOpenAlert(true);
     }
+    setInput('');
   };
 
   const formatTime = date => {
@@ -634,7 +664,13 @@ export default function ChatBotDialog({ dashboardId }) {
               placeholder="Type your message..."
               variant="outlined"
               size="small"
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                  setInput('');
+                }
+              }}
               multiline
               maxRows={3}
               sx={{ mr: 1 }}
