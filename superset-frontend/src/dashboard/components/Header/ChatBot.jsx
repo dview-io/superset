@@ -437,7 +437,6 @@ Instructions:
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'X-Internal-Dsense-Auth': CORTEX_INTERNAL_TOKEN,
         },
         credentials: 'include',
       });
