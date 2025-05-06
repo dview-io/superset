@@ -70,12 +70,18 @@ const ChatIconWrapper = styled('div')(({ theme }) => ({
 const MessageBubble = styled(Paper)(({ theme, sender }) => ({
   padding: theme.spacing(1.5),
   borderRadius: sender === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0',
-  backgroundColor:
-    sender === 'user' ? theme.palette.primary.main : theme.palette.grey[100],
-  color:
-    sender === 'user'
-      ? theme.palette.primary.contrastText
-      : theme.palette.text.primary,
+  backgroundColor: sender === 'user' ? 'white' : 'white',
+  color: theme.palette.text.primary,
+  boxShadow: theme.shadows[2],
+  fontSize: '0.95rem',
+  lineHeight: 1.6,
+}));
+
+const MessageBubbleBot = styled(Paper)(({ theme, sender }) => ({
+  padding: theme.spacing(1.5),
+  borderRadius: sender === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0',
+  backgroundColor: sender === 'user' ? 'white' : 'white',
+  color: theme.palette.text.primary,
   boxShadow: theme.shadows[2],
   fontSize: '0.95rem',
   lineHeight: 1.6,
@@ -113,6 +119,8 @@ export default function ChatBotDialog({ dashboardId }) {
   const [unread, setUnread] = React.useState(0);
   const messagesEndRef = React.useRef(null);
   const [dashBoardChart, setDashboardCharts] = React.useState(null);
+  const [dashBoardChartResponse, setDashboardChartsResponse] =
+    React.useState(null);
   const [dashBoardChartError, setDashboardChartsError] = React.useState(null);
   const [chartData, setChartData] = React.useState(null);
   const [chartSql, setChartSql] = React.useState(null);
@@ -177,7 +185,6 @@ export default function ChatBotDialog({ dashboardId }) {
   const sendDataset = payload => {
     const fetchData = async () => {
       const token = await hitLogin();
-      console.log('gaurav log', token);
       let catalog = [];
       if (DEFAULT_CATALOG) {
         catalog = [DEFAULT_CATALOG];
@@ -215,7 +222,6 @@ export default function ChatBotDialog({ dashboardId }) {
 
           setMessages(prev => [...prev, botResponse]);
         } catch (error) {
-          console.error('API call failed:', error);
           const botResponse = {
             data_type: 'TEXT',
             explanation: null,
@@ -237,13 +243,49 @@ export default function ChatBotDialog({ dashboardId }) {
       axios
         .get(`${SUPERSET_URL}/dashboard/${dashboardId}/charts`)
         .then(response => {
-          setDashboardCharts(response.data);
+          setDashboardChartsResponse(response.data);
         })
         .catch(error => {
           setDashboardChartsError(error.message);
         });
     }
   }, [open]);
+
+  function filterCharts(chartArray) {
+    const result = [];
+
+    chartArray.result.forEach(chart => {
+      const formData = chart.form_data;
+
+      if (Object.hasOwn(formData, 'column')) {
+        result.push(chart);
+      } else if (
+        Object.hasOwn(formData, 'groupby') &&
+        Array.isArray(formData.groupby) &&
+        formData.groupby.length === 1
+      ) {
+        result.push(chart);
+      } else if (
+        Object.hasOwn(formData, 'source') &&
+        Object.hasOwn(formData, 'target')
+      ) {
+        result.push(chart);
+      } else if (Object.hasOwn(formData, 'source')) {
+        result.push(chart);
+      } else if (Object.hasOwn(formData, 'target')) {
+        result.push(chart);
+      }
+    });
+
+    return { result: result };
+  }
+
+  React.useEffect(() => {
+    if (dashBoardChartResponse) {
+      const filteredcharts = filterCharts(dashBoardChartResponse);
+      setDashboardCharts(filteredcharts);
+    }
+  }, [dashBoardChartResponse]);
 
   React.useEffect(() => {
     if (chartData) {
@@ -254,6 +296,18 @@ export default function ChatBotDialog({ dashboardId }) {
         if (chartData.result.form_data.groupby.length === 1) {
           columns_value = chartData.result.form_data.groupby;
         }
+      } else if (
+        Object.hasOwn(chartData.result.form_data, 'source') &&
+        Object.hasOwn(chartData.result.form_data, 'target')
+      ) {
+        columns_value.push(
+          chartData.result.form_data.source,
+          chartData.result.form_data.target,
+        );
+      } else if (Object.hasOwn(chartData.result.form_data, 'source')) {
+        columns_value.push(chartData.result.form_data.source);
+      } else if (Object.hasOwn(chartData.result.form_data, 'target')) {
+        columns_value.push(chartData.result.form_data.target);
       }
 
       const queries = [
@@ -346,8 +400,8 @@ export default function ChatBotDialog({ dashboardId }) {
       setMessages(prev => [
         ...prev,
         {
-          text: 'Here are the charts from this dashboard. Please select one:',
-          sender: 'bot',
+          text: 'Select a chart to explore key insights from the dashboard',
+          sender: 'user',
           charts: chartList,
           timestamp: new Date(),
           error: false,
@@ -445,7 +499,6 @@ Instructions:
   const handleAlertclose = () => setOpenAlert(false);
 
   const chat_result = msg => {
-    console.log('gaurav', msg);
     const explanationComponent = msg.explanation ? (
       <div style={{ marginBottom: '12px', color: '#555', fontSize: '0.95rem' }}>
         <strong>Explanation:</strong> {msg.explanation}
@@ -454,10 +507,39 @@ Instructions:
 
     if (msg.data_type === 'TABLE') {
       return (
+        <MessageBubbleBot><div
+        style={{
+          display: 'flex',
+          justifyContent: 'start',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'start',
+            gap: 1,
+            mb: 0,
+          }}
+        >
+          <Avatar
+            src="/static/assets/images/icons/dsense-logo-sm.svg"
+            alt="Dsense"
+            style={{backgroundColor: 'rgb(157 111 255)',
+              padding: '4px',
+              width: '30px',
+              height: '30px',}}
+          >
+            <img src="/static/assets/images/icons/dsense-logo-sm.svg" alt="Dsense" />
+          </Avatar>
+
+        </Box>
+
         <div>
           {explanationComponent}
+
           <DsenseTable data={msg.text} />
         </div>
+      </div></MessageBubbleBot>
       );
     } else if (msg.data_type === 'TEXT') {
       return (
@@ -472,10 +554,10 @@ Instructions:
               }}
             >
               <span style={{ color: '#555' }}>Answer:</span>
-              <TypingText text={msg.text} speed={30} />
+              <TypingText text={msg.text} speed={20} />
             </div>
           ) : (
-            <TypingText text={msg.text} speed={30} />
+            <TypingText text={msg.text} speed={20} />
           )}
         </div>
       );
@@ -543,7 +625,7 @@ Instructions:
             right: 16,
             m: 0,
             width: { xs: 'calc(100% - 32px)', sm: '450px' },
-            height: '80vh',
+            height: '90vh',
             maxHeight: 'calc(100% - 32px)',
             overflowY: 'hidden',
           },
@@ -596,8 +678,36 @@ Instructions:
                 }}
               >
                 <Box sx={{ maxWidth: '100%' }}>
-                  <MessageBubble sender={msg.sender}>
-                    {!msg.charts && msg.sender === 'bot' ? (
+                  {msg.sender === 'user' ? (
+                    <MessageBubble sender={msg.sender}>
+                      <Typography variant="body1">{msg.text}</Typography>
+                      {msg.charts && (
+                        <Box sx={{ mt: 2, minWidth: 200 }}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel id="chart-select-label">
+                              Select Chart
+                            </InputLabel>
+                            <Select
+                              labelId="chart-select-label"
+                              value={selectedChartId}
+                              label="Select Chart"
+                              onChange={handleChange}
+                            >
+                              {msg.charts.map(chart => (
+                                <MenuItem key={chart.id} value={chart}>
+                                  {chart.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      )}
+                    </MessageBubble>
+                  ) : (
+                    chat_result(msg)
+                  )}
+                  {/* <MessageBubble sender={msg.sender}>
+                    {!msg.charts && msg.sender === 'bot' ? chat_result(msg) (
                       chat_result(msg)
                     ) : (
                       <Typography variant="body1">{msg.text}</Typography>
@@ -623,21 +733,7 @@ Instructions:
                         </FormControl>
                       </Box>
                     )}
-                  </MessageBubble>
-                  {msg.timestamp && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: 'block',
-                        textAlign: msg.sender === 'user' ? 'right' : 'left',
-                        mt: 0.5,
-                        mx: 1,
-                      }}
-                    >
-                      {formatTime(msg.timestamp)}
-                    </Typography>
-                  )}
+                  </MessageBubble> */}
                 </Box>
               </Box>
             ))}
@@ -646,8 +742,8 @@ Instructions:
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <MessageBubble sender="bot" sx={{ py: 1, px: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2">Thinking</Typography>
                     <CircularProgress size={14} />
-                    <Typography variant="body2">Typing...</Typography>
                   </Box>
                 </MessageBubble>
               </Box>

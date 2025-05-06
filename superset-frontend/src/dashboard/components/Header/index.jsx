@@ -100,6 +100,10 @@ const extensionsRegistry = getExtensionsRegistry();
 const muiTheme = createTheme({
   palette: {
     mode: 'light',
+  
+  },
+  typography: {
+    fontFamily: 'Geist, "Helvetica Neue", Arial, sans-serif',
   },
 });
 

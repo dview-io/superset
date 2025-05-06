@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from '@mui/material';
 
-const TypingText = ({ text, speed = 50 }) => {
+const TypingText = ({ text, speed = 20 }) => {
   const [displayedText, setDisplayedText] = useState('');
 
   useEffect(() => {
