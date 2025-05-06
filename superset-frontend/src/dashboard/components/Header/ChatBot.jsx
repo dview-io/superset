@@ -366,7 +366,7 @@ export default function ChatBotDialog({ dashboardId }) {
   React.useEffect(() => {
     if (chartSql) {
       const sql_payload = {
-        sql: 'SELECT * FROM databricks.tpcds.catalog_sales LIMIT 100',
+        sql:  chartSql.result[0].query,
       };
       sendDataset(sql_payload);
     }
