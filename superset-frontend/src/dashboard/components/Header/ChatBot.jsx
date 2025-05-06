@@ -22,12 +22,14 @@ import { queries } from '@testing-library/dom';
 import { callApi } from '@superset-ui/core';
 import TypingText from './TypingText';
 import DsenseTable from './DsenseTable';
+import TypingText2 from './TypingText2';
 
 const CORTEX_ENDPOINT_NEW = window.featureFlags.CORTEX_ENPOINT;
 const COSMOS_URL = window.featureFlags.COSMOS_ENDPOINT;
 const DEFAULT_CATALOG = window.featureFlags.DEFAULT_CATALOG;
 const LOGIN_USERNAME = window.featureFlags.LOGIN_USERNAME;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
+const CORTEX_INTERNAL_TOKEN=window.featureFlags.CORTEX_INTERNAL_TOKEN
 
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
@@ -67,11 +69,11 @@ const ChatIconWrapper = styled('div')(({ theme }) => ({
   alignItems: 'center',
 }));
 
-const MessageBubble = styled(Paper)(({ theme, sender }) => ({
+const MessageBubble = styled(Paper)(({ theme, sender ,charts}) => ({
   padding: theme.spacing(1.5),
   borderRadius: sender === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0',
-  backgroundColor: sender === 'user' ? 'white' : 'white',
-  color: theme.palette.text.primary,
+  backgroundColor: charts?'white':'rgb(157 111 255)',
+  color: charts?'':'white',
   boxShadow: theme.shadows[2],
   fontSize: '0.95rem',
   lineHeight: 1.6,
@@ -103,8 +105,7 @@ const InputContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1),
-  backgroundColor: '#fafafa',
-  borderTop: `1px solid ${theme.palette.divider}`,
+  backgroundColor: 'white',
 }));
 
 const Transition = React.forwardRef(function Transition(props, ref) {
@@ -214,8 +215,8 @@ export default function ChatBotDialog({ dashboardId }) {
           const botResponse = {
             data_type: 'TEXT',
             explanation: null,
-            text: `${selectedChart.name} chart is selected. Ask a question.`,
-            sender: 'bot',
+            text: `${selectedChart.name} chart is selected.\n Ask a question.`,
+            sender: 'first',
             timestamp: new Date(),
             error: true,
           };
@@ -372,14 +373,7 @@ export default function ChatBotDialog({ dashboardId }) {
   }, [chartSql]);
 
   const handleChartSelect = chart => {
-    const userMessage = {
-      text: `I want to view the chart: ${chart.name} `,
-      sender: 'user',
-      timestamp: new Date(),
-      error: false,
-    };
     setSelectedChart(chart);
-
     getSqlQuery(chart.datasource_id, chart.slice_url);
   };
 
@@ -443,7 +437,7 @@ Instructions:
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'X-Internal-Dsense-Auth': 'Testing123',
+          'X-Internal-Dsense-Auth': CORTEX_INTERNAL_TOKEN,
         },
         credentials: 'include',
       });
@@ -501,45 +495,33 @@ Instructions:
   const chat_result = msg => {
     const explanationComponent = msg.explanation ? (
       <div style={{ marginBottom: '12px', color: '#555', fontSize: '0.95rem' }}>
-        <strong>Explanation:</strong> {msg.explanation}
+        <strong>Explanation:</strong> <Typography variant="body1"
+                        style={{fontSize:'13px',display:'inline'}}>{msg.explanation}</Typography>
       </div>
     ) : null;
 
     if (msg.data_type === 'TABLE') {
       return (
-        <MessageBubbleBot><div
-        style={{
-          display: 'flex',
-          justifyContent: 'start',
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'start',
-            gap: 1,
-            mb: 0,
-          }}
-        >
-          <Avatar
-            src="/static/assets/images/icons/dsense-logo-sm.svg"
-            alt="Dsense"
-            style={{backgroundColor: 'rgb(157 111 255)',
-              padding: '4px',
-              width: '30px',
-              height: '30px',}}
+       
+          <MessageBubbleBot
+            style={{ display: 'flex', overflow: 'scroll', gap: 1 }}
           >
-            <img src="/static/assets/images/icons/dsense-logo-sm.svg" alt="Dsense" />
-          </Avatar>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'start',
+                gap: 2,
+                width:'100%'
+              }}
+            >
+              <div style={{ maxWidth: '100%', overflowX: 'scroll' }}>
+                {explanationComponent}
 
-        </Box>
-
-        <div>
-          {explanationComponent}
-
-          <DsenseTable data={msg.text} />
-        </div>
-      </div></MessageBubbleBot>
+                <DsenseTable data={msg.text} />
+              </div>
+            </div>
+          </MessageBubbleBot>
+     
       );
     } else if (msg.data_type === 'TEXT') {
       return (
@@ -553,17 +535,17 @@ Instructions:
                 fontSize: '0.95rem',
               }}
             >
-              <span style={{ color: '#555' }}>Answer:</span>
+              <strong style={{ color: '#555' }}>Answer:</strong>
               <TypingText text={msg.text} speed={20} />
             </div>
           ) : (
-            <TypingText text={msg.text} speed={20} />
+            <TypingText2 text={msg.text} />
           )}
         </div>
       );
     }
 
-    return null; // Fallback case if no data type matches
+    return null;
   };
 
   const handleSend = () => {
@@ -595,6 +577,16 @@ Instructions:
 
   const formatTime = date => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const alignMessage = sender => {
+    if (sender === 'user') {
+      return 'flex-end';
+    } else if (sender === 'bot') {
+      return 'flex-start';
+    } else {
+      return 'center';
+    }
   };
 
   return (
@@ -645,7 +637,7 @@ Instructions:
           <Avatar
             src="/static/assets/images/icons/dsense-logo-sm.svg"
             alt="Dsense"
-            sx={{ mr: 2 }}
+            sx={{ mr: 2, borderRadius: 0 }}
           />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Dsense Assistant
@@ -670,8 +662,7 @@ Instructions:
                 key={index}
                 sx={{
                   display: 'flex',
-                  justifyContent:
-                    msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                  justifyContent: alignMessage(msg.sender),
                   alignItems: 'flex-end',
                   gap: 1,
                   p: 1,
@@ -679,8 +670,13 @@ Instructions:
               >
                 <Box sx={{ maxWidth: '100%' }}>
                   {msg.sender === 'user' ? (
-                    <MessageBubble sender={msg.sender}>
-                      <Typography variant="body1">{msg.text}</Typography>
+                    <MessageBubble sender={msg.sender} charts={msg?.charts}>
+                      <Typography
+                        variant="body1"
+                        style={{fontSize:'13px'}}
+                      >
+                        {msg.text}
+                      </Typography>
                       {msg.charts && (
                         <Box sx={{ mt: 2, minWidth: 200 }}>
                           <FormControl fullWidth size="small">
@@ -706,46 +702,18 @@ Instructions:
                   ) : (
                     chat_result(msg)
                   )}
-                  {/* <MessageBubble sender={msg.sender}>
-                    {!msg.charts && msg.sender === 'bot' ? chat_result(msg) (
-                      chat_result(msg)
-                    ) : (
-                      <Typography variant="body1">{msg.text}</Typography>
-                    )}
-                    {msg.charts && (
-                      <Box sx={{ mt: 2, minWidth: 200 }}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel id="chart-select-label">
-                            Select Chart
-                          </InputLabel>
-                          <Select
-                            labelId="chart-select-label"
-                            value={selectedChartId}
-                            label="Select Chart"
-                            onChange={handleChange}
-                          >
-                            {msg.charts.map(chart => (
-                              <MenuItem key={chart.id} value={chart}>
-                                {chart.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Box>
-                    )}
-                  </MessageBubble> */}
                 </Box>
               </Box>
             ))}
 
             {isTyping && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MessageBubble sender="bot" sx={{ py: 1, px: 2 }}>
+                <MessageBubbleBot sender="bot" sx={{ py: 1, px: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body2">Thinking</Typography>
+                    <Typography variant="body2" style={{fontSize:'13px'}}>Thinking</Typography>
                     <CircularProgress size={14} />
                   </Box>
-                </MessageBubble>
+                </MessageBubbleBot>
               </Box>
             )}
 
@@ -753,45 +721,71 @@ Instructions:
           </ChatContainer>
 
           <InputContainer>
-            <TextField
-              fullWidth
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Type your message..."
-              variant="outlined"
-              size="small"
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                  setInput('');
-                }
-              }}
-              multiline
-              maxRows={3}
-              sx={{ mr: 1 }}
-            />
-            <IconButton
-              color="primary"
-              onClick={handleSend}
-              disabled={!input.trim()}
-              sx={{
-                p: 1.5,
-                bgcolor: input.trim()
-                  ? 'primary.main'
-                  : 'action.disabledBackground',
-                color: input.trim()
-                  ? 'primary.contrastText'
-                  : 'action.disabled',
-                '&:hover': {
-                  bgcolor: input.trim()
-                    ? 'primary.dark'
-                    : 'action.disabledBackground',
-                },
+            <div
+              style={{
+                border: '1px solid #D3D3D3x',
+                borderRadius: '20px',
+                width: '100%',
+                display: 'flex',
               }}
             >
-              <SendIcon />
-            </IconButton>
+              <TextField
+                fullWidth
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Type your message..."
+                variant="outlined"
+                size="small"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                    setInput('');
+                  }
+                }}
+                multiline
+                maxRows={3}
+                sx={{
+                  mr: 1,
+                  fontSize:13,
+                  borderWidth: 0,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'grey',
+                      borderWidth: '0px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'grey',
+                      borderWidth: '0px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'grey',
+                      borderWidth: '0px',
+                    },
+                    '&.Mui-disabled fieldset': {
+                      borderColor: 'grey',
+                      borderWidth: '0px',
+                    },
+                    '&.Mui-error fieldset': {
+                      borderColor: 'grey',
+                      borderWidth: '0px',
+                    },
+                  },
+                }}
+              />
+              <IconButton
+                color="primary"
+                onClick={handleSend}
+                disabled={!input.trim() && input.trim().length>6}
+                sx={{
+                  p: 1.5,
+
+                  color: input.trim() && input.trim().length>6 ? 'black' : 'action.disabled',
+                }}
+              >
+                <SendIcon />
+              </IconButton>
+            </div>
           </InputContainer>
         </DialogContent>
       </Dialog>
@@ -800,18 +794,16 @@ Instructions:
         onClose={handleAlertclose}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
+
       >
-        <DialogTitle id="alert-dialog-title">{'Dsense Alert'}</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
+        <DialogTitle id="alert-dialog-title" style={{textAlign:'center'}}>Dsense Alert</DialogTitle>
+        <DialogContent style={{padding:'10px 24px'}}>
+          <DialogContentText id="alert-dialog-description" sstyle={{textAlign:'center'}} >
             {alertContent}
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
+        <DialogActions style={{justifyContent:'center'}}>
           <Button onClick={handleAlertclose}>Close</Button>
-          <Button onClick={handleAlertclose} autoFocus>
-            Ok
-          </Button>
         </DialogActions>
       </Dialog>
     </>

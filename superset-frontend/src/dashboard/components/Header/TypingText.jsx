@@ -15,7 +15,7 @@ const TypingText = ({ text, speed = 20 }) => {
     return () => clearInterval(interval);
   }, [text, speed]);
 
-  return <Typography variant="body1">{displayedText}</Typography>;
+  return <Typography style={{display:'inline',fontSize:'13px'}} variant="body1">{displayedText}</Typography>;
 };
 
 export default TypingText;

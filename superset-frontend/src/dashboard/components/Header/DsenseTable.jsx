@@ -51,7 +51,7 @@ const DsenseTable = ({ data = [] }) => {
         backgroundColor: '#f0f0f0',
         border: '1px solid #b0b0b0',
         borderRadius: 2,
-        padding: 0.5,
+        overflow:'scroll',
       }}
     >
       <DataGrid
@@ -65,10 +65,10 @@ const DsenseTable = ({ data = [] }) => {
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: '#e0e0e0',
             fontWeight: 'bold',
-            fontSize: '0.95rem',
+            fontSize: '12px',
           },
           '& .MuiDataGrid-cell': {
-            fontSize: '0.9rem',
+            fontSize: '11px',
           },
           '& .MuiDataGrid-row:hover': {
             backgroundColor: '#f9f9f9',

@@ -96,6 +96,8 @@ import {Modal} from 'antd-v5';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import ChatBotDialog from './ChatBot';
 
+const enableChatBot = window.featureFlags.ENABLE_CHATBOT;
+
 const extensionsRegistry = getExtensionsRegistry();
 const muiTheme = createTheme({
   palette: {
@@ -685,9 +687,9 @@ const Header = () => {
         ) : (
           <div css={actionButtonsStyle}>
             {NavExtension && <NavExtension />}
-            <div style={{marginRight:'4px'}}><ThemeProvider theme={muiTheme}>
+           {enableChatBot&& <div style={{marginRight:'4px'}}><ThemeProvider theme={muiTheme}>
     <ChatBotDialog dashboardId={dashboardInfo.id} />
-  </ThemeProvider></div>
+  </ThemeProvider></div>}
       
             {userCanEdit && (
               <Button
