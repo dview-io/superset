@@ -449,3 +449,5 @@ zipp==3.21.0
     # via importlib-metadata
 zstandard==0.23.0
     # via flask-compress
+psycopg2-binary==2.9.10
+flask-cors

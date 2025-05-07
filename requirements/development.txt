@@ -932,3 +932,36 @@ zstandard==0.23.0
     # via
     #   -c requirements/base.txt
     #   flask-compress
+# Core data libraries
+
+dask
+
+# Concurrency and performance
+gevent
+
+# Databases and communication
+redis
+trino
+
+# Time series and statistical modeling
+prophet
+statsmodels
+pmdarima
+
+# Geospatial libraries
+geopandas
+shapely
+
+# Machine learning
+scikit-learn
+xgboost
+lightgbm
+
+# Visualization
+bokeh
+holoviews
+matplotlib
+seaborn
+plotly
+pydeck
+
