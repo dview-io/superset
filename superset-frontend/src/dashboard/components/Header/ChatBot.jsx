@@ -278,6 +278,9 @@ export default function ChatBotDialog({ dashboardId }) {
       } else if (Object.hasOwn(formData, 'target')) {
         result.push(chart);
       }
+      else if (Object.hasOwn(formData, 'all_columns')){
+        result.push(chart);
+      }
     });
 
     return { result: result };
@@ -311,6 +314,9 @@ export default function ChatBotDialog({ dashboardId }) {
         columns_value.push(chartData.result.form_data.source);
       } else if (Object.hasOwn(chartData.result.form_data, 'target')) {
         columns_value.push(chartData.result.form_data.target);
+      }
+      else if (Object.hasOwn(chartData.result.form_data, 'all_columns')) {
+        columns_value=chartData.result.form_data.all_columns;
       }
 
       const queries = [
@@ -422,11 +428,11 @@ export default function ChatBotDialog({ dashboardId }) {
   };
   const sendDsenseMessage = async prompt => {
     const sql_query = {
-      sql: 'SELECT * FROM databricks.tpcds.catalog_sales LIMIT 100',
+      sql: chartSql.result[0].query
     };
     const new_prompt = `You are an expert data analyst.
 Use the ${DEFAULT_CATALOG} catalog to run and interpret the following SQL query:
-	${sql_query.sql}
+	${sql_query}
 The business question is: ${prompt}
 Instructions:
 	1. First, explain in plain business terms what this SQL query is doing.
