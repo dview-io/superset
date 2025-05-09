@@ -23,13 +23,14 @@ import { callApi } from '@superset-ui/core';
 import TypingText from './TypingText';
 import DsenseTable from './DsenseTable';
 import TypingText2 from './TypingText2';
+import DsenseLogo from '../../../assets/images/icons/dsense-logo-sm.svg?react';
 
 const CORTEX_ENDPOINT_NEW = window.featureFlags.CORTEX_ENPOINT;
 const COSMOS_URL = window.featureFlags.COSMOS_ENDPOINT;
 const DEFAULT_CATALOG = window.featureFlags.DEFAULT_CATALOG;
 const LOGIN_USERNAME = window.featureFlags.LOGIN_USERNAME;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
-const CORTEX_INTERNAL_TOKEN=window.featureFlags.CORTEX_INTERNAL_TOKEN
+const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
@@ -69,11 +70,11 @@ const ChatIconWrapper = styled('div')(({ theme }) => ({
   alignItems: 'center',
 }));
 
-const MessageBubble = styled(Paper)(({ theme, sender ,charts}) => ({
+const MessageBubble = styled(Paper)(({ theme, sender, charts }) => ({
   padding: theme.spacing(1.5),
   borderRadius: sender === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0',
-  backgroundColor: charts?'white':'rgb(157 111 255)',
-  color: charts?'':'white',
+  backgroundColor: charts ? 'white' : 'rgb(157 111 255)',
+  color: charts ? '' : 'white',
   boxShadow: theme.shadows[2],
   fontSize: '0.95rem',
   lineHeight: 1.6,
@@ -133,7 +134,9 @@ export default function ChatBotDialog({ dashboardId }) {
   const [loginToken, setLoginToken] = React.useState(null);
   const [datasetId, setDatasetId] = React.useState(null);
   const [selectedChartId, setSelectedChartId] = React.useState(null);
-  const SUPERSET_URL = 'http://localhost:8088/api/v1';
+
+  const SUPERSET_URL = `${window.location.origin}/api/v1`;
+  console.log('gaurav',SUPERSET_URL);
 
   const hitLogin = async () => {
     if (LOGIN_PASSWORD && LOGIN_USERNAME) {
@@ -205,7 +208,6 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-              'X-Internal-Dsense-Auth': 'Testing123',
             },
             credentials: 'include',
             jsonPayload: payload,
@@ -494,33 +496,36 @@ Instructions:
   const chat_result = msg => {
     const explanationComponent = msg.explanation ? (
       <div style={{ marginBottom: '12px', color: '#555', fontSize: '0.95rem' }}>
-        <strong>Explanation:</strong> <Typography variant="body1"
-                        style={{fontSize:'13px',display:'inline'}}>{msg.explanation}</Typography>
+        <strong>Explanation:</strong>{' '}
+        <Typography
+          variant="body1"
+          style={{ fontSize: '13px', display: 'inline' }}
+        >
+          {msg.explanation}
+        </Typography>
       </div>
     ) : null;
 
     if (msg.data_type === 'TABLE') {
       return (
-       
-          <MessageBubbleBot
-            style={{ display: 'flex', overflow: 'scroll', gap: 1 }}
+        <MessageBubbleBot
+          style={{ display: 'flex', overflow: 'scroll', gap: 1 }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'start',
+              gap: 2,
+              width: '100%',
+            }}
           >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'start',
-                gap: 2,
-                width:'100%'
-              }}
-            >
-              <div style={{ maxWidth: '100%', overflowX: 'scroll' }}>
-                {explanationComponent}
+            <div style={{ maxWidth: '100%', overflowX: 'scroll' }}>
+              {explanationComponent}
 
-                <DsenseTable data={msg.text} />
-              </div>
+              <DsenseTable data={msg.text} />
             </div>
-          </MessageBubbleBot>
-     
+          </div>
+        </MessageBubbleBot>
       );
     } else if (msg.data_type === 'TEXT') {
       return (
@@ -593,11 +598,8 @@ Instructions:
       <Badge badgeContent={unread} color="error">
         <ChatButton onClick={handleClickOpen} color="primary">
           <ChatIconWrapper>
-            <img
-              src="/static/assets/images/icons/dsense-logo-sm.svg"
-              alt="dsense-icon"
-              style={{ height: '30px', width: '30px' }}
-            />
+   
+            <DsenseLogo/>
           </ChatIconWrapper>
         </ChatButton>
       </Badge>
@@ -633,11 +635,9 @@ Instructions:
             fontSize: '1.1rem',
           }}
         >
-          <Avatar
-            src="/static/assets/images/icons/dsense-logo-sm.svg"
-            alt="Dsense"
-            sx={{ mr: 2, borderRadius: 0 }}
-          />
+          <Box sx={{ mr: 2, display: 'flex', alignItems: 'center' }}>
+            <DsenseLogo />
+          </Box>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Dsense Assistant
           </Typography>
@@ -670,10 +670,7 @@ Instructions:
                 <Box sx={{ maxWidth: '100%' }}>
                   {msg.sender === 'user' ? (
                     <MessageBubble sender={msg.sender} charts={msg?.charts}>
-                      <Typography
-                        variant="body1"
-                        style={{fontSize:'13px'}}
-                      >
+                      <Typography variant="body1" style={{ fontSize: '13px' }}>
                         {msg.text}
                       </Typography>
                       {msg.charts && (
@@ -709,7 +706,9 @@ Instructions:
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <MessageBubbleBot sender="bot" sx={{ py: 1, px: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body2" style={{fontSize:'13px'}}>Thinking</Typography>
+                    <Typography variant="body2" style={{ fontSize: '13px' }}>
+                      Thinking
+                    </Typography>
                     <CircularProgress size={14} />
                   </Box>
                 </MessageBubbleBot>
@@ -746,7 +745,7 @@ Instructions:
                 maxRows={3}
                 sx={{
                   mr: 1,
-                  fontSize:13,
+                  fontSize: 13,
                   borderWidth: 0,
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
@@ -775,11 +774,14 @@ Instructions:
               <IconButton
                 color="primary"
                 onClick={handleSend}
-                disabled={!input.trim() && input.trim().length>6}
+                disabled={!input.trim() && input.trim().length > 6}
                 sx={{
                   p: 1.5,
 
-                  color: input.trim() && input.trim().length>6 ? 'black' : 'action.disabled',
+                  color:
+                    input.trim() && input.trim().length > 6
+                      ? 'black'
+                      : 'action.disabled',
                 }}
               >
                 <SendIcon />
@@ -793,15 +795,19 @@ Instructions:
         onClose={handleAlertclose}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
-
       >
-        <DialogTitle id="alert-dialog-title" style={{textAlign:'center'}}>Dsense Alert</DialogTitle>
-        <DialogContent style={{padding:'10px 24px'}}>
-          <DialogContentText id="alert-dialog-description" sstyle={{textAlign:'center'}} >
+        <DialogTitle id="alert-dialog-title" style={{ textAlign: 'center' }}>
+          Dsense Alert
+        </DialogTitle>
+        <DialogContent style={{ padding: '10px 24px' }}>
+          <DialogContentText
+            id="alert-dialog-description"
+            sstyle={{ textAlign: 'center' }}
+          >
             {alertContent}
           </DialogContentText>
         </DialogContent>
-        <DialogActions style={{justifyContent:'center'}}>
+        <DialogActions style={{ justifyContent: 'center' }}>
           <Button onClick={handleAlertclose}>Close</Button>
         </DialogActions>
       </Dialog>
