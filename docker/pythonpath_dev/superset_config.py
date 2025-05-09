@@ -155,7 +155,5 @@ try:
 except ImportError:
     logger.info("Using default Docker config...")
 
-
-COSMOS_ENDPOINT=os.getenv('COSMOS_ENDPOINT')
 FLASK_APP_MUTATOR = flask_app_mutator
 
