@@ -136,7 +136,7 @@ export default function ChatBotDialog({ dashboardId }) {
   const [selectedChartId, setSelectedChartId] = React.useState(null);
 
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
-  console.log('gaurav',SUPERSET_URL);
+
 
   const hitLogin = async () => {
     if (LOGIN_PASSWORD && LOGIN_USERNAME) {
