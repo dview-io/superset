@@ -298,7 +298,7 @@ export default function ChatBotDialog({ dashboardId }) {
       let columns_value = [];
       if (Object.hasOwn(chartData.result.form_data, 'column')) {
         columns_value.push(chartData.result.form_data.column);
-      } else if (Object.hasOwn(chartData.result.form_data, 'groupby')) {
+      } else if (Object.hasOwn(chartData.result.form_data, 'groupby') && chartData.result.form_data.groupby.length === 1 ) {
         if (chartData.result.form_data.groupby.length === 1) {
           columns_value = chartData.result.form_data.groupby;
         }
@@ -432,7 +432,7 @@ export default function ChatBotDialog({ dashboardId }) {
     };
     const new_prompt = `You are an expert data analyst.
 Use the ${DEFAULT_CATALOG} catalog to run and interpret the following SQL query:
-	${sql_query}
+	${sql_query.sql}
 The business question is: ${prompt}
 Instructions:
 	1. First, explain in plain business terms what this SQL query is doing.
