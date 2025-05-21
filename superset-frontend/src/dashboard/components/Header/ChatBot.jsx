@@ -435,8 +435,8 @@ export default function ChatBotDialog({ dashboardId }) {
       .replace('{catalog}', DEFAULT_CATALOG)
       .replace('{sql}', sql_query.sql)
       .replace('{prompt}', prompt);
-    
-    const response_from_dsense = await callApi({
+    try {
+      const response_from_dsense = await callApi({
         parseMethod: 'json',
         url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
         method: 'POST',
