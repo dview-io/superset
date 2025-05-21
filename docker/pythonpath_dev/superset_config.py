@@ -108,6 +108,14 @@ LOGIN_PASSWORD=os.getenv('LOGIN_PASSWORD')
 ENABLE_CHATBOT=os.getenv('ENABLE_CHATBOT')
 CORTEX_INTERNAL_TOKEN=os.getenv('CORTEX_INTERNAL_TOKEN')
 
+PROMPT_TEMPLATE="""You are an expert data analyst.
+Use the {catalog} catalog to run and interpret the following SQL query:
+  {sql}
+The business question is: {prompt}
+Instructions:
+  1. First, explain in plain business terms what this SQL query is doing.
+  2. Then, provide a direct answer to the business question based on what the query returns."""
+
 FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
 "COSMOS_ENDPOINT":COSMOS_ENDPOINT,
 
@@ -116,7 +124,7 @@ FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOI
 "LOGIN_USERNAME":LOGIN_USERNAME,
 "LOGIN_PASSWORD":LOGIN_PASSWORD,
 "ENABLE_CHATBOT":ENABLE_CHATBOT,
-"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN}
+"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE}
 
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501

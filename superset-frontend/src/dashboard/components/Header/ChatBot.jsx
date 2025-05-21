@@ -31,6 +31,7 @@ const DEFAULT_CATALOG = window.featureFlags.DEFAULT_CATALOG;
 const LOGIN_USERNAME = window.featureFlags.LOGIN_USERNAME;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
 const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
+const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
 
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
@@ -136,7 +137,6 @@ export default function ChatBotDialog({ dashboardId }) {
   const [selectedChartId, setSelectedChartId] = React.useState(null);
 
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
-
 
   const hitLogin = async () => {
     if (LOGIN_PASSWORD && LOGIN_USERNAME) {
@@ -277,8 +277,7 @@ export default function ChatBotDialog({ dashboardId }) {
         result.push(chart);
       } else if (Object.hasOwn(formData, 'target')) {
         result.push(chart);
-      }
-      else if (Object.hasOwn(formData, 'all_columns')){
+      } else if (Object.hasOwn(formData, 'all_columns')) {
         result.push(chart);
       }
     });
@@ -298,7 +297,10 @@ export default function ChatBotDialog({ dashboardId }) {
       let columns_value = [];
       if (Object.hasOwn(chartData.result.form_data, 'column')) {
         columns_value.push(chartData.result.form_data.column);
-      } else if (Object.hasOwn(chartData.result.form_data, 'groupby') && chartData.result.form_data.groupby.length === 1 ) {
+      } else if (
+        Object.hasOwn(chartData.result.form_data, 'groupby') &&
+        chartData.result.form_data.groupby.length === 1
+      ) {
         if (chartData.result.form_data.groupby.length === 1) {
           columns_value = chartData.result.form_data.groupby;
         }
@@ -314,9 +316,8 @@ export default function ChatBotDialog({ dashboardId }) {
         columns_value.push(chartData.result.form_data.source);
       } else if (Object.hasOwn(chartData.result.form_data, 'target')) {
         columns_value.push(chartData.result.form_data.target);
-      }
-      else if (Object.hasOwn(chartData.result.form_data, 'all_columns')) {
-        columns_value=chartData.result.form_data.all_columns;
+      } else if (Object.hasOwn(chartData.result.form_data, 'all_columns')) {
+        columns_value = chartData.result.form_data.all_columns;
       }
 
       const queries = [
@@ -374,7 +375,7 @@ export default function ChatBotDialog({ dashboardId }) {
   React.useEffect(() => {
     if (chartSql) {
       const sql_payload = {
-        sql:  chartSql.result[0].query,
+        sql: chartSql.result[0].query,
       };
       sendDataset(sql_payload);
     }
@@ -428,17 +429,14 @@ export default function ChatBotDialog({ dashboardId }) {
   };
   const sendDsenseMessage = async prompt => {
     const sql_query = {
-      sql: chartSql.result[0].query
+      sql: chartSql.result[0].query,
     };
-    const new_prompt = `You are an expert data analyst.
-Use the ${DEFAULT_CATALOG} catalog to run and interpret the following SQL query:
-	${sql_query.sql}
-The business question is: ${prompt}
-Instructions:
-	1. First, explain in plain business terms what this SQL query is doing.
-	2. Then, provide a direct answer to the business question based on what the query returns.`;
-    try {
-      const response_from_dsense = await callApi({
+    const new_prompt = promptTemplate
+      .replace('{catalog}', DEFAULT_CATALOG)
+      .replace('{sql}', sql_query.sql)
+      .replace('{prompt}', prompt);
+    
+    const response_from_dsense = await callApi({
         parseMethod: 'json',
         url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
         method: 'POST',
@@ -604,8 +602,7 @@ Instructions:
       <Badge badgeContent={unread} color="error">
         <ChatButton onClick={handleClickOpen} color="primary">
           <ChatIconWrapper>
-   
-            <DsenseLogo/>
+            <DsenseLogo />
           </ChatIconWrapper>
         </ChatButton>
       </Badge>
