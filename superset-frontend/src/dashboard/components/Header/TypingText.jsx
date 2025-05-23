@@ -4,6 +4,12 @@ import { Typography } from '@mui/material';
 const TypingText = ({ text, speed = 20 }) => {
   const [displayedText, setDisplayedText] = useState('');
 
+  function boldWordsInsideQuotes(text) {
+    return text.replace(/\*\*(.*?)\*\*/g, (_, matchedText) => {
+      return `<b>${matchedText.toUpperCase()}</b>`;
+    });
+  }
+
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
@@ -15,7 +21,13 @@ const TypingText = ({ text, speed = 20 }) => {
     return () => clearInterval(interval);
   }, [text, speed]);
 
-  return <Typography style={{display:'inline',fontSize:'13px'}} variant="body1">{displayedText}</Typography>;
+  return (
+    <Typography
+      style={{ display: 'inline', fontSize: '13px' }}
+      variant="body1"
+      dangerouslySetInnerHTML={{ __html: boldWordsInsideQuotes(displayedText) }}
+    />
+  );
 };
 
 export default TypingText;

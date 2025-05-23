@@ -138,9 +138,9 @@ export default function ChatBotDialog({ dashboardId }) {
 
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
 
-  const hitLogin = async () => {
-    if (LOGIN_PASSWORD && LOGIN_USERNAME) {
-      if (loginToken) {
+  const hitLogin = async (retry=false) => {
+    if (LOGIN_PASSWORD && LOGIN_PASSWORD) {
+      if (loginToken && !retry) {
         return loginToken;
       }
 
@@ -186,15 +186,16 @@ export default function ChatBotDialog({ dashboardId }) {
     }
   };
 
-  const sendDataset = payload => {
+  const sendDataset =async (retryFlag = false) => {
+
     const fetchData = async () => {
-      const token = await hitLogin();
+      
+      const token = await hitLogin(retryFlag);
       let catalog = [];
       if (DEFAULT_CATALOG) {
         catalog = [DEFAULT_CATALOG];
       }
-
-      payload = {
+      const payload = {
         catalogs: catalog,
         schemas: [],
         tables: [],
@@ -208,22 +209,25 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
+              'X-Internal-Dsense-Auth': 'Testing123',
             },
             credentials: 'include',
             jsonPayload: payload,
           });
 
           setDatasetId(data.json.id);
-          const botResponse = {
-            data_type: 'TEXT',
-            explanation: null,
-            text: `${selectedChart.name} chart is selected.\n Ask a question.`,
-            sender: 'first',
-            timestamp: new Date(),
-            error: true,
-          };
+          if (!retryFlag) {
+            const botResponse = {
+              data_type: 'TEXT',
+              explanation: null,
+              text: `${selectedChart.name} chart is selected.\n Ask a question.`,
+              sender: 'first',
+              timestamp: new Date(),
+              error: true,
+            };
 
-          setMessages(prev => [...prev, botResponse]);
+            setMessages(prev => [...prev, botResponse]);
+          }
         } catch (error) {
           const botResponse = {
             data_type: 'TEXT',
@@ -238,7 +242,7 @@ export default function ChatBotDialog({ dashboardId }) {
         }
       }
     };
-    fetchData();
+   await fetchData();
   };
 
   React.useEffect(() => {
@@ -377,7 +381,7 @@ export default function ChatBotDialog({ dashboardId }) {
       const sql_payload = {
         sql: chartSql.result[0].query,
       };
-      sendDataset(sql_payload);
+      sendDataset();
     }
   }, [chartSql]);
 
@@ -438,11 +442,12 @@ export default function ChatBotDialog({ dashboardId }) {
     try {
       const response_from_dsense = await callApi({
         parseMethod: 'json',
-        url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
+        url: `${CORTEX_ENDPOINT_NEW}/cha/${datasetId}/ask?prompt=${new_prompt}`,
         method: 'POST',
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
+          'X-Internal-Dsense-Auth': 'Testing123',
         },
         credentials: 'include',
       });
@@ -465,19 +470,72 @@ export default function ChatBotDialog({ dashboardId }) {
         }
       }, 1000);
     } catch (error) {
-      setIsTyping(false);
-      const botResponse = {
-        data_type: 'TEXT',
-        explanation: null,
-        text: 'Dsense request failed. Please retry after sometime!',
-        sender: 'bot',
-        timestamp: new Date(),
-        error: true,
-      };
+      if (error.status >= 400 && error.status < 500) {
+        try {
+          await sendDataset(true);
+          const response_from_dsense = await callApi({
+            parseMethod: 'json',
+            url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Internal-Dsense-Auth': 'Testing123',
+            },
+            credentials: 'include',
+          });
 
-      setMessages(prev => [...prev, botResponse]);
+          setTimeout(() => {
+            const botResponse = {
+              data_type: response_from_dsense.json?.result_type,
+              explanation: response_from_dsense.json?.sql_explanation,
+              text: response_from_dsense.json?.results,
+              sender: 'bot',
+              timestamp: new Date(),
+              error: false,
+            };
+
+            setMessages(prev => [...prev, botResponse]);
+            setIsTyping(false);
+
+            if (!open) {
+              setUnread(prev => prev + 1);
+            }
+          }, 1000);
+        } catch (error) {
+          setIsTyping(false);
+          const botResponse = {
+            data_type: 'TEXT',
+            explanation: null,
+            text: 'Dsense request failed. Please retry after sometime!',
+            sender: 'bot',
+            timestamp: new Date(),
+            error: true,
+          };
+
+          setMessages(prev => [...prev, botResponse]);
+        }
+      } else {
+        setIsTyping(false);
+        const botResponse = {
+          data_type: 'TEXT',
+          explanation: null,
+          text: 'Dsense request failed. Please retry after sometime!',
+          sender: 'bot',
+          timestamp: new Date(),
+          error: true,
+        };
+
+        setMessages(prev => [...prev, botResponse]);
+      }
     }
   };
+
+  function boldWordsInsideQuotes(text) {
+    return text.replace(/\*\*(.*?)\*\*/g, (_, matchedText) => {
+      return `<b>${matchedText.toUpperCase()}</b>`;
+    });
+  }
 
   const handleClose = () => {
     setOpen(false);
@@ -498,18 +556,6 @@ export default function ChatBotDialog({ dashboardId }) {
   const handleAlertclose = () => setOpenAlert(false);
 
   const chat_result = msg => {
-    const explanationComponent = msg.explanation ? (
-      <div style={{ marginBottom: '12px', color: '#555', fontSize: '0.95rem' }}>
-        <strong>Explanation:</strong>{' '}
-        <Typography
-          variant="body1"
-          style={{ fontSize: '13px', display: 'inline' }}
-        >
-          {msg.explanation}
-        </Typography>
-      </div>
-    ) : null;
-
     if (msg.data_type === 'TABLE') {
       return (
         <MessageBubbleBot
@@ -524,8 +570,6 @@ export default function ChatBotDialog({ dashboardId }) {
             }}
           >
             <div style={{ maxWidth: '100%', overflowX: 'scroll' }}>
-              {explanationComponent}
-
               <DsenseTable data={msg.text} />
             </div>
           </div>
@@ -534,20 +578,18 @@ export default function ChatBotDialog({ dashboardId }) {
     } else if (msg.data_type === 'TEXT') {
       return (
         <div>
-          {explanationComponent}
           {!msg.error ? (
-            <div
+            <MessageBubbleBot
               style={{
                 marginBottom: '12px',
                 color: '#555',
                 fontSize: '0.95rem',
               }}
             >
-              <strong style={{ color: '#555' }}>Answer:</strong>
               <TypingText text={msg.text} speed={20} />
-            </div>
+            </MessageBubbleBot>
           ) : (
-            <TypingText2 text={msg.text} />
+            <TypingText2 text={boldWordsInsideQuotes(msg.text)} />
           )}
         </div>
       );
