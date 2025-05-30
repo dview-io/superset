@@ -28,7 +28,6 @@ import DsenseLogo from '../../../assets/images/icons/dsense-logo-sm.svg?react';
 const CORTEX_ENDPOINT_NEW = window.featureFlags.CORTEX_ENPOINT;
 const COSMOS_URL = window.featureFlags.COSMOS_ENDPOINT;
 const DEFAULT_CATALOG = window.featureFlags.DEFAULT_CATALOG;
-const LOGIN_USERNAME = window.featureFlags.LOGIN_USERNAME;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
 const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
@@ -135,17 +134,18 @@ export default function ChatBotDialog({ dashboardId }) {
   const [loginToken, setLoginToken] = React.useState(null);
   const [datasetId, setDatasetId] = React.useState(null);
   const [selectedChartId, setSelectedChartId] = React.useState(null);
+  const [userEmail, setUserEmail] = React.useState(null);
 
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
 
-  const hitLogin = async (retry=false) => {
-    if (LOGIN_PASSWORD && LOGIN_PASSWORD) {
+  const hitLogin = async (retry = false) => {
+    if ((userEmail) && LOGIN_PASSWORD) {
       if (loginToken && !retry) {
         return loginToken;
       }
 
       const loginPayload = {
-        email: LOGIN_USERNAME,
+        email: userEmail,
         password: LOGIN_PASSWORD,
       };
 
@@ -165,7 +165,7 @@ export default function ChatBotDialog({ dashboardId }) {
           data_type: 'TEXT',
           explanation: null,
           text: `Login failed. Select chart to retry.`,
-          sender: 'bot',
+          sender: 'first',
           timestamp: new Date(),
           error: true,
         };
@@ -186,10 +186,8 @@ export default function ChatBotDialog({ dashboardId }) {
     }
   };
 
-  const sendDataset =async (retryFlag = false) => {
-
+  const sendDataset = async (retryFlag = false) => {
     const fetchData = async () => {
-      
       const token = await hitLogin(retryFlag);
       let catalog = [];
       if (DEFAULT_CATALOG) {
@@ -209,7 +207,6 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-              'X-Internal-Dsense-Auth': 'Testing123',
             },
             credentials: 'include',
             jsonPayload: payload,
@@ -242,7 +239,7 @@ export default function ChatBotDialog({ dashboardId }) {
         }
       }
     };
-   await fetchData();
+    await fetchData();
   };
 
   React.useEffect(() => {
@@ -390,6 +387,26 @@ export default function ChatBotDialog({ dashboardId }) {
     getSqlQuery(chart.datasource_id, chart.slice_url);
   };
 
+  const fetchUserEmail = async () => {
+    try {
+      const response = await axios.get(`${SUPERSET_URL}/me`, {
+        withCredentials: true,
+      });
+      setUserEmail(response.data.result.email);
+    } catch (error) {
+      const botResponse = {
+        data_type: 'TEXT',
+        explanation: null,
+        text: `Unable to login email address.`,
+        sender: 'first',
+        timestamp: new Date(),
+        error: true,
+      };
+      setMessages(prev => [...prev, botResponse]);
+      return null;
+    }
+  };
+
   React.useEffect(() => {
     if (
       dashBoardChart &&
@@ -414,8 +431,10 @@ export default function ChatBotDialog({ dashboardId }) {
           error: false,
         },
       ]);
+      fetchUserEmail();
     }
   }, [dashBoardChart]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -442,12 +461,11 @@ export default function ChatBotDialog({ dashboardId }) {
     try {
       const response_from_dsense = await callApi({
         parseMethod: 'json',
-        url: `${CORTEX_ENDPOINT_NEW}/cha/${datasetId}/ask?prompt=${new_prompt}`,
+        url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
         method: 'POST',
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'X-Internal-Dsense-Auth': 'Testing123',
         },
         credentials: 'include',
       });
@@ -480,7 +498,6 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-              'X-Internal-Dsense-Auth': 'Testing123',
             },
             credentials: 'include',
           });
