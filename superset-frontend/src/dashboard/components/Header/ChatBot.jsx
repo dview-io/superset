@@ -207,7 +207,7 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-              'X-Internal-Dsense-Auth': 'Testing123'
+           
             },
             credentials: 'include',
             jsonPayload: payload,
@@ -467,7 +467,7 @@ export default function ChatBotDialog({ dashboardId }) {
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'X-Internal-Dsense-Auth': 'Testing123'
+    
         },
         credentials: 'include',
       });
@@ -500,7 +500,7 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-              'X-Internal-Dsense-Auth': 'Testing123'
+              
             },
             credentials: 'include',
           });
