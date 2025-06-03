@@ -53,6 +53,9 @@ else
   uv pip install --no-cache-dir "${ARGS[@]}"
 fi
 
+pip install --no-cache pandas numpy dask gevent psycopg2-binary redis trino prophet statsmodels geopandas shapely
+pip install --no-cache scikit-learn pmdarima xgboost lightgbm bokeh holoviews matplotlib seaborn plotly pydeck
+
 # Remove build-essential if it was installed
 if $REQUIRES_BUILD_ESSENTIAL; then
   echo "Removing build-essential to keep the image lean..."

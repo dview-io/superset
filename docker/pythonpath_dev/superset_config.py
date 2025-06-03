@@ -26,6 +26,7 @@ import sys
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
+from superset.dsense import flask_app_mutator
 
 logger = logging.getLogger()
 
@@ -98,7 +99,33 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True}
+logging.warning("CORTEX_ENDPOINT = %s", os.getenv("CORTEX_ENDPOINT"))
+
+COSMOS_ENDPOINT=os.getenv('COSMOS_ENDPOINT')
+DEFAULT_CATALOG=os.getenv('DEFAULT_CATALOG')
+LOGIN_USERNAME=os.getenv('LOGIN_USERNAME')
+LOGIN_PASSWORD=os.getenv('LOGIN_PASSWORD')
+ENABLE_CHATBOT=os.getenv('ENABLE_CHATBOT')
+CORTEX_INTERNAL_TOKEN=os.getenv('CORTEX_INTERNAL_TOKEN')
+
+PROMPT_TEMPLATE="""You are an expert data analyst.
+Use the {catalog} catalog to run and interpret the following SQL query:
+  {sql}
+The business question is: {prompt}
+Instructions:
+  1. First, explain in plain business terms what this SQL query is doing.
+  2. Then, provide a direct answer to the business question based on what the query returns."""
+
+FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
+"COSMOS_ENDPOINT":COSMOS_ENDPOINT,
+
+"DEFAULT_CATALOG":DEFAULT_CATALOG,
+
+"LOGIN_USERNAME":LOGIN_USERNAME,
+"LOGIN_PASSWORD":LOGIN_PASSWORD,
+"ENABLE_CHATBOT":ENABLE_CHATBOT,
+"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE}
+
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 WEBDRIVER_BASEURL = "http://superset:8088/"  # When using docker compose baseurl should be http://superset_app:8088/  # noqa: E501
 # The base URL for the email report hyperlinks.
@@ -133,3 +160,5 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+FLASK_APP_MUTATOR = flask_app_mutator
