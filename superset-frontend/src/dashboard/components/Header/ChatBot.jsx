@@ -321,7 +321,7 @@ export default function ChatBotDialog({ dashboardId }) {
       } else if (
         Object.hasOwn(chartData.result.form_data.metric.column, 'column_name')
       ) {
-        columns_value = chartData.result.form_data.metric.column.column_name;
+        columns_value.push(chartData.result.form_data.metric.column.column_name);
       } else {
         columns_value = ['*'];
       }
@@ -394,7 +394,7 @@ export default function ChatBotDialog({ dashboardId }) {
 
   const fetchUserEmail = async () => {
     try {
-      const response = await axios.get(`${SUPERSET_URL}/me`, {
+      const response = await axios.get(`${SUPERSET_URL}/me/`, {
         withCredentials: true,
       });
       setUserEmail(response.data.result.email);
