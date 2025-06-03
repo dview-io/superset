@@ -139,7 +139,7 @@ export default function ChatBotDialog({ dashboardId }) {
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
 
   const hitLogin = async (retry = false) => {
-    if ((userEmail) && LOGIN_PASSWORD) {
+    if (userEmail && LOGIN_PASSWORD) {
       if (loginToken && !retry) {
         return loginToken;
       }
@@ -207,7 +207,6 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-           
             },
             credentials: 'include',
             jsonPayload: payload,
@@ -289,8 +288,7 @@ export default function ChatBotDialog({ dashboardId }) {
 
   React.useEffect(() => {
     if (dashBoardChartResponse) {
-      const filteredcharts = filterCharts(dashBoardChartResponse);
-      setDashboardCharts(filteredcharts);
+      setDashboardCharts(dashBoardChartResponse);
     }
   }, [dashBoardChartResponse]);
 
@@ -320,6 +318,12 @@ export default function ChatBotDialog({ dashboardId }) {
         columns_value.push(chartData.result.form_data.target);
       } else if (Object.hasOwn(chartData.result.form_data, 'all_columns')) {
         columns_value = chartData.result.form_data.all_columns;
+      } else if (
+        Object.hasOwn(chartData.result.form_data.metric.column, 'column_name')
+      ) {
+        columns_value = chartData.result.form_data.metric.column.column_name;
+      } else {
+        columns_value = ['*'];
       }
 
       const queries = [
@@ -467,7 +471,6 @@ export default function ChatBotDialog({ dashboardId }) {
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-    
         },
         credentials: 'include',
       });
@@ -500,7 +503,6 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
-              
             },
             credentials: 'include',
           });
