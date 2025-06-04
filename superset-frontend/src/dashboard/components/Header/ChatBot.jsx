@@ -31,6 +31,7 @@ const DEFAULT_CATALOG = window.featureFlags.DEFAULT_CATALOG;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
 const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
+const defaultTable = window.featureFlags.DEFAULT_TABLE;
 
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
@@ -190,13 +191,17 @@ export default function ChatBotDialog({ dashboardId }) {
     const fetchData = async () => {
       const token = await hitLogin(retryFlag);
       let catalog = [];
+      let tablesDefault = [];
       if (DEFAULT_CATALOG) {
         catalog = [DEFAULT_CATALOG];
+      }
+      if (defaultTable) {
+        tablesDefault = [defaultTable];
       }
       const payload = {
         catalogs: catalog,
         schemas: [],
-        tables: [],
+        tables: tablesDefault,
       };
       if (token) {
         try {
@@ -756,7 +761,7 @@ export default function ChatBotDialog({ dashboardId }) {
                               MenuProps={{
                                 PaperProps: {
                                   style: {
-                                    maxHeight: '20vh'
+                                    maxHeight: '20vh',
                                   },
                                 },
                               }}
