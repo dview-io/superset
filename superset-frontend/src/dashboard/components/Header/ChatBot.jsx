@@ -319,9 +319,11 @@ export default function ChatBotDialog({ dashboardId }) {
       } else if (Object.hasOwn(chartData.result.form_data, 'all_columns')) {
         columns_value = chartData.result.form_data.all_columns;
       } else if (
-        Object.hasOwn(chartData.result.form_data.metric.column, 'column_name')
+        chartData.result.form_data?.metric?.column?.column_name !== undefined
       ) {
-        columns_value.push(chartData.result.form_data.metric.column.column_name);
+        columns_value.push(
+          chartData.result.form_data.metric.column.column_name,
+        );
       } else {
         columns_value = ['*'];
       }
@@ -751,6 +753,13 @@ export default function ChatBotDialog({ dashboardId }) {
                               value={selectedChartId}
                               label="Select Chart"
                               onChange={handleChange}
+                              MenuProps={{
+                                PaperProps: {
+                                  style: {
+                                    maxHeight: '20vh',
+                                  },
+                                },
+                              }}
                             >
                               {msg.charts.map(chart => (
                                 <MenuItem key={chart.id} value={chart}>
