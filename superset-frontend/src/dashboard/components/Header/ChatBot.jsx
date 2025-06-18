@@ -27,11 +27,10 @@ import DsenseLogo from '../../../assets/images/icons/dsense-logo-sm.svg?react';
 
 const CORTEX_ENDPOINT_NEW = window.featureFlags.CORTEX_ENPOINT;
 const COSMOS_URL = window.featureFlags.COSMOS_ENDPOINT;
-const DEFAULT_CATALOG = window.featureFlags.DEFAULT_CATALOG;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
 const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
-const defaultTable = window.featureFlags.DEFAULT_TABLE;
+const labelIds = window.featureFlags.DEFAULT_LABELIDS;
 
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
@@ -188,20 +187,20 @@ export default function ChatBotDialog({ dashboardId }) {
   };
 
   const sendDataset = async (retryFlag = false) => {
+    let retryCount = 0;
     const fetchData = async () => {
+      retryCount += 1;
       const token = await hitLogin(retryFlag);
-      let catalog = [];
+      let labelIdsVar = [];
       let tablesDefault = [];
-      if (DEFAULT_CATALOG) {
-        catalog = [DEFAULT_CATALOG];
-      }
-      if (defaultTable) {
-        tablesDefault = [defaultTable];
+      if (labelIds) {
+        labelIdsVar = labelIdsVar;
       }
       const payload = {
-        catalogs: catalog,
+        catalogs: [],
         schemas: [],
-        tables: tablesDefault,
+        tables: [],
+        label_ids: labelIds,
       };
       if (token) {
         try {
@@ -212,6 +211,7 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
+
             },
             credentials: 'include',
             jsonPayload: payload,
@@ -231,16 +231,20 @@ export default function ChatBotDialog({ dashboardId }) {
             setMessages(prev => [...prev, botResponse]);
           }
         } catch (error) {
-          const botResponse = {
-            data_type: 'TEXT',
-            explanation: null,
-            text: `Dsense request failed. Please retry after sometime!"`,
-            sender: 'bot',
-            timestamp: new Date(),
-            error: true,
-          };
+          if (retryCount >= 3) {
+            const botResponse = {
+              data_type: 'TEXT',
+              explanation: null,
+              text: `Dsense request failed. Please retry after sometime!"`,
+              sender: 'bot',
+              timestamp: new Date(),
+              error: true,
+            };
 
-          setMessages(prev => [...prev, botResponse]);
+            setMessages(prev => [...prev, botResponse]);
+          } else {
+            await fetchData();
+          }
         }
       }
     };
@@ -466,10 +470,7 @@ export default function ChatBotDialog({ dashboardId }) {
     const sql_query = {
       sql: chartSql.result[0].query,
     };
-    const new_prompt = promptTemplate
-      .replace('{catalog}', DEFAULT_CATALOG)
-      .replace('{sql}', sql_query.sql)
-      .replace('{prompt}', prompt);
+    const new_prompt = promptTemplate.replace('{prompt}', prompt);
     try {
       const response_from_dsense = await callApi({
         parseMethod: 'json',
@@ -478,6 +479,7 @@ export default function ChatBotDialog({ dashboardId }) {
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
+     
         },
         credentials: 'include',
       });
@@ -510,6 +512,7 @@ export default function ChatBotDialog({ dashboardId }) {
             mode: 'cors',
             headers: {
               'Content-Type': 'application/json',
+        
             },
             credentials: 'include',
           });

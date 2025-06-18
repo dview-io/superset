@@ -47,6 +47,10 @@ LOGIN_USERNAME = os.getenv('LOGIN_USERNAME')
 LOGIN_PASSWORD = os.getenv('LOGIN_PASSWORD')
 ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT')
 CORTEX_INTERNAL_TOKEN = os.getenv('CORTEX_INTERNAL_TOKEN')
+DEFAULT_LABELIDS=os.getenv('DEFAULT_LABELIDS')
+ENABLE_DSENSE = True
+DSENSE_URL=os.getenv('DSENSE_URL')
+RELATIONS_URL=os.getenv('RELATIONS_URL')
 
 PROMPT_TEMPLATE="""You are a business executive reviewing strategic insights. 
 Using the {catalog} dataset, analyze and interpret the results of the following SQL query: 
@@ -57,14 +61,17 @@ Instructions — Your response must:
     2. Deliver a concise executive summary focused on strategic insights. Use clear, business-oriented language suitable for senior decision-makers, avoiding technical or engineering terms. Present all monetary values in INR.
     3. Highlight key focus words by writing them in bold and all capital letters."""
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
-"COSMOS_ENDPOINT":COSMOS_ENDPOINT,
-
-"DEFAULT_CATALOG":DEFAULT_CATALOG,
-
-"LOGIN_USERNAME":LOGIN_USERNAME,
-"LOGIN_PASSWORD":LOGIN_PASSWORD,
-"ENABLE_CHATBOT":ENABLE_CHATBOT,
-"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE}
+FEATURE_FLAGS = {"ALERT_REPORTS": True,
+                 "CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
+                 "COSMOS_ENDPOINT":COSMOS_ENDPOINT,
+                 "LOGIN_USERNAME":LOGIN_USERNAME,
+                 "LOGIN_PASSWORD":LOGIN_PASSWORD,
+                 "ENABLE_CHATBOT":ENABLE_CHATBOT,
+                 "CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,
+                 "PROMPT_TEMPLATE":PROMPT_TEMPLATE ,
+                 "DEFAULT_LABELIDS":DEFAULT_LABELIDS,
+                 "ENABLE_DSENSE":ENABLE_DSENSE,
+                 "DSENSE_URL":DSENSE_URL,
+                 "RELATIONS_URL":RELATIONS_URL}
 
 FLASK_APP_MUTATOR = flask_app_mutator

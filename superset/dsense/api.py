@@ -101,3 +101,4 @@ class Dsense(BaseSupersetApi):
 
         except requests.exceptions.RequestException as e:
             return self.response(500, message=f"COSMOS API error: {str(e)}", success=False)
+        

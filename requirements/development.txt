@@ -964,4 +964,5 @@ matplotlib
 seaborn
 plotly
 pydeck
+authlib
 

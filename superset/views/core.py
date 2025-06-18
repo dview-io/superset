@@ -927,3 +927,4 @@ class Superset(BaseSupersetView):
     @deprecated(new_target="/sqllab/history")
     def sqllab_history(self) -> FlaskResponse:
         return redirect(url_for("SqllabView.history"))
+    

@@ -28,6 +28,7 @@ import getBootstrapData from 'src/utils/getBootstrapData';
 
 // not lazy loaded since this is the home page.
 import Home from 'src/pages/Home';
+import DviewRelation from 'src/pages/Dsense/relation';
 
 const ChartCreation = lazy(
   () =>
@@ -138,6 +139,10 @@ const UsersList: LazyExoticComponent<any> = lazy(
   () => import(/* webpackChunkName: "UsersList" */ 'src/pages/UsersList'),
 );
 
+const Dsense: LazyExoticComponent<any> = lazy(
+  () => import(/* webpackChunkName: "UsersList" */ 'src/pages/Dsense'),
+);
+
 type Routes = {
   path: string;
   Component: ComponentType;
@@ -239,6 +244,14 @@ export const routes: Routes = [
   {
     path: '/sqllab/',
     Component: SqlLab,
+  },
+  {
+    path: '/dsense',
+    Component: Dsense,
+  },
+  {
+    path: '/relations',
+    Component: DviewRelation,
   },
 ];
 

@@ -17,3 +17,12 @@
  * under the License.
  */
 declare var __webpack_public_path__: string;
+
+declare global {
+  interface Window {
+    featureFlags: {
+      ENABLE_DSENSE: boolean;
+      ENABLE_CHATBOT: boolean;
+    };
+  }
+}

@@ -23,6 +23,9 @@
 import logging
 import os
 import sys
+from flask_appbuilder.security.manager import AUTH_OAUTH
+from custom_sso_security_manager import CustomSsoSecurityManager
+
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
@@ -107,7 +110,10 @@ LOGIN_USERNAME=os.getenv('LOGIN_USERNAME')
 LOGIN_PASSWORD=os.getenv('LOGIN_PASSWORD')
 ENABLE_CHATBOT=os.getenv('ENABLE_CHATBOT')
 CORTEX_INTERNAL_TOKEN=os.getenv('CORTEX_INTERNAL_TOKEN')
-DEFAULT_TABLE=os.getenv('DEFAULT_TABLE')
+DEFAULT_LABELIDS=os.getenv('DEFAULT_LABELIDS')
+ENABLE_DSENSE = os.getenv('ENABLE_DSENSE')
+DSENSE_URL=os.getenv('DSENSE_URL')
+RELATIONS_URL=os.getenv('RELATIONS_URL')
 
 PROMPT_TEMPLATE="""You are an expert data analyst.
 Use the {catalog} catalog to run and interpret the following SQL query:
@@ -119,13 +125,10 @@ Instructions:
 
 FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
 "COSMOS_ENDPOINT":COSMOS_ENDPOINT,
-
-"DEFAULT_CATALOG":DEFAULT_CATALOG,
-
 "LOGIN_USERNAME":LOGIN_USERNAME,
 "LOGIN_PASSWORD":LOGIN_PASSWORD,
 "ENABLE_CHATBOT":ENABLE_CHATBOT,
-"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE ,"DEFAULT_TABLE":DEFAULT_TABLE}
+"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE ,"DEFAULT_LABELIDS":DEFAULT_LABELIDS,"ENABLE_DSENSE":ENABLE_DSENSE,"DSENSE_URL":DSENSE_URL,"RELATIONS_URL":RELATIONS_URL}
 
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
@@ -165,4 +168,25 @@ except ImportError:
     logger.info("Using default Docker config...")
 
 FLASK_APP_MUTATOR = flask_app_mutator
+
+CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager # For managing User data after fetching from SSO app
+
+# Set the authentication type to OAuth
+AUTH_DB = True
+AUTH_TYPE = AUTH_DB
+# AUTH_TYPE = AUTH_OAUTH
+
+
+
+
+# Will allow user self registration, allowing to create Flask users from Authorized User
+AUTH_USER_REGISTRATION = False
+
+
+# The default user self registration role
+# Can change it to Gamma if want user to have dashboard view
+AUTH_USER_REGISTRATION_ROLE = "Gamma"
+
+FAB_ADD_SECURITY_VIEWS = True
+
 
