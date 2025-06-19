@@ -47,19 +47,12 @@ LOGIN_USERNAME = os.getenv('LOGIN_USERNAME')
 LOGIN_PASSWORD = os.getenv('LOGIN_PASSWORD')
 ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT')
 CORTEX_INTERNAL_TOKEN = os.getenv('CORTEX_INTERNAL_TOKEN')
-DEFAULT_LABELIDS=os.getenv('DEFAULT_LABELIDS')
+DEFAULT_LABELIDS=[]
 ENABLE_DSENSE = True
-DSENSE_URL=os.getenv('DSENSE_URL')
-RELATIONS_URL=os.getenv('RELATIONS_URL')
+DSENSE_URL='https://cloud-dev.dview.io/superset/loader'
+RELATIONS_URL='https://cloud-dev.dview.io/superset/relations'
 
-PROMPT_TEMPLATE="""You are a business executive reviewing strategic insights. 
-Using the {catalog} dataset, analyze and interpret the results of the following SQL query: 
-{sql} 
-The core business question is: {prompt} 
-Instructions — Your response must: 
-    1. Identify and apply key performance indicators (KPIs) and other relevant business metrics based on the context of the tables using the SQL query. Ensure your analysis directly addresses the business question and supports actionable, data-driven decisions. 
-    2. Deliver a concise executive summary focused on strategic insights. Use clear, business-oriented language suitable for senior decision-makers, avoiding technical or engineering terms. Present all monetary values in INR.
-    3. Highlight key focus words by writing them in bold and all capital letters."""
+PROMPT_TEMPLATE="""{prompt}.  **INSTRUCTIONS:** 1. If the user refers to a **SPECIFIC MONTH**, compare with the **PREVIOUS AND NEXT MONTH** if available. 2. If the user refers to a **QUARTER**, compare with the **PREVIOUS QUARTER**. 3. If the user refers to a **YEAR**, compare with the **PREVIOUS YEAR**. 4. If a filter such as **PRODUCT**, **SCHEME**, **ZONE**, **CITY**, **STATE**, **LOCATION**, or **BRANCH** is used, compare that group against the **TOP 3 PEERS** in the same category using **DISBURSAL RATIO** or **DISBURSED VOLUME**. --- **METRIC LOGIC:** **DISBURSAL_RATIO_SQL**: > CASE WHEN COUNT(DISTINCT REFERENCE_ID_CLEANED) = 0 THEN 0 > ELSE ROUND(100.0 * SUM(CASE WHEN GT_FINAL = '10 Disbursed' THEN 1 ELSE 0 END) / COUNT(DISTINCT REFERENCE_ID_CLEANED), 1) END --- **RESPONSE FORMAT:** - All **KPI NAMES**, **TIME PERIODS**, and **FILTER VALUES** in **BOLD AND ALL CAPITAL LETTERS** - Monetary values in **INR**, 1 decimal place, using **CRORES** if applicable - Use directional terms like **INCREASE**, **DECLINE**, **ROSE**, **FELL**, **HIGHER**, **LOWER** - Always quantify: - **% POINT CHANGE IN DISBURSAL RATIO** - **% CHANGE IN DISBURSED VOLUME** --- **ENFORCEMENT:** - **DO NOT** ask the user to specify a comparison period. - **ALWAYS** infer the **ADJACENT PERIOD** based on available data in **GT_DATE**. - **DO NOT** include forward-looking statements unless explicitly requested. - **ALWAYS** include a **TREND-BASED RESPONSE** even if the user provides only one month. - **DO NOT** output in multiple rows. **ALWAYS** write SQL in a way that produces **ONE ROW** with each month or entity as a **COLUMN**. --- **FORMAT OVERRIDE (USE THIS STRICTLY FOR MONTH-BASED PROMPTS):** If the user is asking about **LOGIN TO DISBURSAL RATE** for a specific month, use the **exact format** below: ``` Login to Disbursal rate in [MONTH YEAR]: [X]% ([UP/DOWN] [Y]% from [PREVIOUS MONTH]) Disbursed volume: [VOLUME], compared to [PREVIOUS MONTH VOLUME] ([UP/DOWN] Y%) — [COMMENT] ``` --- **RULES FOR THIS FORMAT:** - Only compare to the **PREVIOUS MONTH**, not both sides. - Round all **PERCENTAGE VALUES** to **1 DECIMAL PLACE**. - Select [COMMENT] based on data trend: - If % drop > 1% and **DISBURSED VOLUME** also fell → "MAJOR HIT AT CREDIT REJECTIONS." - If % rise < 1% → "SLIGHT IMPROVEMENT DUE TO BETTER APPROVAL RATE." - If % rise > 1% and volume also rose → "IMPROVED APPROVALS AND SOURCING EFFICIENCY." - **DO NOT** explain what **DISBURSAL RATIO** is. - **DO NOT** repeat metric logic or definitions. - **DO NOT** output in any narrative or multiline format. - **DO NOT** return raw tables or datasets. - The final **OUTPUT** must follow this exact one-liner structure with **KEYWORDS IN BOLD AND ALL CAPS** (e.g., **MARCH 2025**, **10.3%**, **DOWN**, **DISBURSED VOLUME**, etc.). --- **ADDITIONAL ENFORCEMENT RULE:** - **ALWAYS** calculate and insert the actual **% CHANGE IN DISBURSED VOLUME**. - **DO NOT** use placeholders like "Y%" — if data is missing, return this fallback: "Disbursed volume data unavailable for [PREVIOUS MONTH]." - **NEVER** return incomplete statements or ambiguous phrases like "DOWN Y%" or "UP Y%"."""
 
 FEATURE_FLAGS = {"ALERT_REPORTS": True,
                  "CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),

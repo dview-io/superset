@@ -1,4 +1,4 @@
-FROM dview/superset:5.0.4
+FROM dview/superset:5.0.5
 
 USER root
 
@@ -15,3 +15,4 @@ RUN wget -q https://github.com/mozilla/geckodriver/releases/download/v${GECKODRI
     rm geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz
 
 USER superset
+
