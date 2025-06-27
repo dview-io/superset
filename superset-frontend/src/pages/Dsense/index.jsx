@@ -8,12 +8,23 @@ const Dsense = () => {
   useEffect(() => {
     const iframe = document.getElementById('cloud-frame');
 
-    iframe.onload = function () {
-      const supersetemail = emailid;
-      const pass = password;
-      iframe.contentWindow.postMessage({ supersetemail, pass }, dsenseUrl);
+    if (!iframe) return;
+
+    iframe.onload = () => {
+      const targetOrigin = new URL(dsenseUrl).origin;
+
+      setTimeout(() => {
+        iframe.contentWindow?.postMessage(
+          {
+            supersetemail: emailid,
+            pass: password,
+          },
+          targetOrigin,
+        );
+      }, 500);
     };
-  }, [dsenseUrl]);
+  }, [dsenseUrl, emailid, password]);
+
   return (
     <div style={{ maxHeight: '100vh' }}>
       <iframe

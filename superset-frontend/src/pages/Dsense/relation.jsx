@@ -8,12 +8,22 @@ const DviewRelation = () => {
   useEffect(() => {
     const iframe = document.getElementById('cloud-relation');
 
-    iframe.onload = function () {
-      const supersetemail = emailid;
-      const pass = password;
-      iframe.contentWindow.postMessage({ supersetemail, pass }, realtionsUrl);
+    if (!iframe) return;
+
+    iframe.onload = () => {
+      const targetOrigin = new URL(dsenseUrl).origin;
+
+      setTimeout(() => {
+        iframe.contentWindow?.postMessage(
+          {
+            supersetemail: emailid,
+            pass: password,
+          },
+          targetOrigin,
+        );
+      }, 500);
     };
-  }, [realtionsUrl]);
+  }, [realtionsUrl, emailid, password]);
   return (
     <div style={{ maxHeight: '100vh' }}>
       <iframe

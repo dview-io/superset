@@ -110,18 +110,14 @@ LOGIN_USERNAME=os.getenv('LOGIN_USERNAME')
 LOGIN_PASSWORD=os.getenv('LOGIN_PASSWORD')
 ENABLE_CHATBOT=os.getenv('ENABLE_CHATBOT')
 CORTEX_INTERNAL_TOKEN=os.getenv('CORTEX_INTERNAL_TOKEN')
-DEFAULT_LABELIDS=os.getenv('DEFAULT_LABELIDS')
+DEFAULT_LABELIDS=["adhoc.__uploads__.loan_against_property"]
 ENABLE_DSENSE = os.getenv('ENABLE_DSENSE')
 DSENSE_URL=os.getenv('DSENSE_URL')
 RELATIONS_URL=os.getenv('RELATIONS_URL')
 
-PROMPT_TEMPLATE="""You are an expert data analyst.
-Use the {catalog} catalog to run and interpret the following SQL query:
-  {sql}
-The business question is: {prompt}
-Instructions:
-  1. First, explain in plain business terms what this SQL query is doing.
-  2. Then, provide a direct answer to the business question based on what the query returns."""
+PROMPT_TEMPLATE="""
+fnrfn
+"""
 
 FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
 "COSMOS_ENDPOINT":COSMOS_ENDPOINT,

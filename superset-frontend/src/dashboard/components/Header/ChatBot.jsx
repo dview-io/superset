@@ -199,8 +199,8 @@ export default function ChatBotDialog({ dashboardId }) {
       const payload = {
         catalogs: [],
         schemas: [],
-        tables: [],
-        label_ids: labelIds,
+        tables: labelIds,
+        label_ids: [],
       };
       if (token) {
         try {

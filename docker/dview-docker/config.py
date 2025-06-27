@@ -36,7 +36,7 @@ RESULTS_BACKEND = RedisCache(
     key_prefix='superset_results',
 )
 
-# Overrides
+# Overridesz
 # secret
 # Generate your own secret key for encryption. Use `openssl rand -base64 42` to generate a good key
 SECRET_KEY = 'F5+YwfWwIte7fOcxO8UbP5lhQVt78+8/DJ0VhVnYuiW0as3zpffWQRMg'
@@ -47,7 +47,8 @@ LOGIN_USERNAME = os.getenv('LOGIN_USERNAME')
 LOGIN_PASSWORD = os.getenv('LOGIN_PASSWORD')
 ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT')
 CORTEX_INTERNAL_TOKEN = os.getenv('CORTEX_INTERNAL_TOKEN')
-DEFAULT_LABELIDS=[]
+DEFAULT_LABELIDS=["adhoc.__uploads__.loan_against_property"]
+# DEFAULT_LABELIDS=["3a71e20a80d14a64b3cc31a49d8deaf6"]
 ENABLE_DSENSE = True
 DSENSE_URL='https://cloud-dev.dview.io/superset/loader'
 RELATIONS_URL='https://cloud-dev.dview.io/superset/relations'

@@ -9,6 +9,19 @@ const TypingText = ({ text, speed = 20 }) => {
       return `<b>${matchedText.toUpperCase()}</b>`;
     });
   }
+  function formatMarkdownSections(input) {
+    return input
+      // Step 1: Format section headers like "# Answer:"
+      .replace(/^#\s*([\w\s]+):\n/gm, (_, section) => `<b> ${section.toUpperCase()}:</b><br>`)
+  
+      // Step 2: Replace double newlines with <br><br>
+      .replace(/\n{2,}/g, '<br><br>')
+  
+      // Step 3: Replace remaining single newlines with <br>
+      .replace(/\n/g, '<br>')
+      
+      .trim();
+  }
 
   useEffect(() => {
     let index = 0;
@@ -25,7 +38,7 @@ const TypingText = ({ text, speed = 20 }) => {
     <Typography
       style={{ display: 'inline', fontSize: '13px' }}
       variant="body1"
-      dangerouslySetInnerHTML={{ __html: boldWordsInsideQuotes(displayedText) }}
+      dangerouslySetInnerHTML={{ __html: formatMarkdownSections(boldWordsInsideQuotes(displayedText))}}
     />
   );
 };
