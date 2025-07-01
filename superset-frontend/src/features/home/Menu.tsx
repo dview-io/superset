@@ -312,12 +312,33 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
   const newMenuData = {
     ...data,
   };
+  const enableDsense = window.featureFlags.ENABLE_DSENSE;
+
   // Menu items that should go into settings dropdown
   const settingsMenus = {
     Data: true,
     Security: true,
     Manage: true,
   };
+
+  const dsenseMenu = {
+    name: 'Dsense',
+    icon: 'fa-dashboard',
+    label: 'Dsense',
+    url: '/dsense',
+  };
+  const dviewRelation = {
+    name: 'Relations',
+    icon: 'fa-dashboard',
+    label: 'Relations',
+    url: '/relations',
+  };
+  // if (enableChatbot || enableDsense) {
+  // }
+  if (enableDsense && newMenuData.menu.length > 0) {
+    newMenuData.menu.push(dsenseMenu);
+    newMenuData.menu.push(dviewRelation);
+  }
 
   // Cycle through menu.menu to build out cleanedMenu and settings
   const cleanedMenu: MenuObjectProps[] = [];

@@ -44,6 +44,9 @@ if $REQUIRES_BUILD_ESSENTIAL; then
     && apt-get install -yqq --no-install-recommends build-essential
 fi
 
+pip install --no-cache pandas numpy dask gevent psycopg2-binary redis trino prophet statsmodels geopandas shapely
+pip install --no-cache scikit-learn pmdarima xgboost lightgbm bokeh holoviews matplotlib seaborn plotly pydeck
+
 # Choose whether to use pip cache
 if $USE_CACHE; then
   echo "Using pip cache..."

@@ -88,8 +88,9 @@ import { dashboardInfoChanged } from '../../actions/dashboardInfo';
 import isDashboardLoading from '../../util/isDashboardLoading';
 import { useChartIds } from '../../util/charts/useChartIds';
 import { useDashboardMetadataBar } from './useDashboardMetadataBar';
-
-const extensionsRegistry = getExtensionsRegistry();
+import { Modal } from 'antd-v5';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import ChatBotDialog from './ChatBot';
 
 const headerContainerStyle = theme => css`
   border-bottom: 1px solid ${theme.colors.grayscale.light2};
@@ -169,6 +170,24 @@ const Header = () => {
   const dataMask = useSelector(state => state.dataMask);
   const user = useSelector(state => state.user);
   const chartIds = useChartIds();
+
+  const enableChatBot = window.featureFlags.ENABLE_CHATBOT;
+  console.log('gaurav', enableChatBot);
+
+  const extensionsRegistry = getExtensionsRegistry();
+  const muiTheme = createTheme({
+    palette: {
+      mode: 'light',
+    },
+    typography: {
+      fontFamily: 'Geist, "Helvetica Neue", Arial, sans-serif',
+    },
+  });
+  const [showDsenseChat, setShowDsenseChat] = useState(false);
+
+  const handleDsense = () => {
+    setShowDsenseChat(true);
+  };
 
   const {
     expandedSlices,
@@ -650,6 +669,14 @@ const Header = () => {
         ) : (
           <div css={actionButtonsStyle}>
             {NavExtension && <NavExtension />}
+            {enableChatBot && (
+              <div style={{ marginRight: '4px' }}>
+                <ThemeProvider theme={muiTheme}>
+                  <ChatBotDialog dashboardId={dashboardInfo.id} />
+                </ThemeProvider>
+              </div>
+            )}
+
             {userCanEdit && (
               <Button
                 buttonStyle="secondary"

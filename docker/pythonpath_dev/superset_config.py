@@ -23,9 +23,11 @@
 import logging
 import os
 import sys
+from flask_appbuilder.security.manager import AUTH_OAUTH
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
+from superset.dsense import flask_app_mutator
 
 logger = logging.getLogger()
 
@@ -71,6 +73,7 @@ CACHE_CONFIG = {
     "CACHE_REDIS_DB": REDIS_RESULTS_DB,
 }
 DATA_CACHE_CONFIG = CACHE_CONFIG
+THUMBNAIL_CACHE_CONFIG = CACHE_CONFIG
 
 
 class CeleryConfig:
@@ -97,12 +100,36 @@ class CeleryConfig:
 
 
 CELERY_CONFIG = CeleryConfig
+logging.warning("CORTEX_ENDPOINT = %s", os.getenv("CORTEX_ENDPOINT"))
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True}
+COSMOS_ENDPOINT=os.getenv('COSMOS_ENDPOINT')
+DEFAULT_CATALOG=os.getenv('DEFAULT_CATALOG')
+LOGIN_USERNAME=os.getenv('LOGIN_USERNAME')
+LOGIN_PASSWORD=os.getenv('LOGIN_PASSWORD')
+ENABLE_CHATBOT=os.getenv('ENABLE_CHATBOT')
+CORTEX_INTERNAL_TOKEN=os.getenv('CORTEX_INTERNAL_TOKEN')
+DEFAULT_LABELIDS=["adhoc.__uploads__.loan_against_property"]
+ENABLE_DSENSE = os.getenv('ENABLE_DSENSE')
+DSENSE_URL=os.getenv('DSENSE_URL')
+RELATIONS_URL=os.getenv('RELATIONS_URL')
+
+PROMPT_TEMPLATE="""
+fnrfn
+"""
+
+FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
+"COSMOS_ENDPOINT":COSMOS_ENDPOINT,
+"LOGIN_USERNAME":LOGIN_USERNAME,
+"LOGIN_PASSWORD":LOGIN_PASSWORD,
+"ENABLE_CHATBOT":ENABLE_CHATBOT,
+"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE ,"DEFAULT_LABELIDS":DEFAULT_LABELIDS,"ENABLE_DSENSE":ENABLE_DSENSE,"DSENSE_URL":DSENSE_URL,"RELATIONS_URL":RELATIONS_URL}
+
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
-WEBDRIVER_BASEURL = "http://superset:8088/"  # When using docker compose baseurl should be http://superset_app:8088/  # noqa: E501
+WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
 # The base URL for the email report hyperlinks.
-WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
+WEBDRIVER_BASEURL_USER_FRIENDLY = (
+    f"http://localhost:8888/{os.environ.get('SUPERSET_APP_ROOT', '/')}/"
+)
 SQLLAB_CTAS_NO_LIMIT = True
 
 log_level_text = os.getenv("SUPERSET_LOG_LEVEL", "INFO")
@@ -129,7 +156,30 @@ try:
     from superset_config_docker import *  # noqa
 
     logger.info(
-        f"Loaded your Docker configuration at " f"[{superset_config_docker.__file__}]"
+        f"Loaded your Docker configuration at [{superset_config_docker.__file__}]"
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+FLASK_APP_MUTATOR = flask_app_mutator
+
+
+# Set the authentication type to OAuth
+AUTH_DB = True
+AUTH_TYPE = AUTH_DB
+# AUTH_TYPE = AUTH_OAUTH
+
+
+
+
+# Will allow user self registration, allowing to create Flask users from Authorized User
+AUTH_USER_REGISTRATION = False
+
+
+# The default user self registration role
+# Can change it to Gamma if want user to have dashboard view
+AUTH_USER_REGISTRATION_ROLE = "Gamma"
+
+FAB_ADD_SECURITY_VIEWS = True
+
+

@@ -21,6 +21,7 @@ import { lazy, ComponentType, ComponentProps } from 'react';
 
 // not lazy loaded since this is the home page.
 import Home from 'src/pages/Home';
+import DviewRelation from 'src/pages/Dsense/relation';
 
 const ChartCreation = lazy(
   () =>
@@ -121,6 +122,10 @@ const RowLevelSecurityList = lazy(
     import(
       /* webpackChunkName: "RowLevelSecurityList" */ 'src/pages/RowLevelSecurityList'
     ),
+);
+
+const Dsense = lazy(
+  () => import(/* webpackChunkName: "UsersList" */ 'src/pages/Dsense'),
 );
 
 type Routes = {
@@ -224,6 +229,14 @@ export const routes: Routes = [
   {
     path: '/sqllab/',
     Component: SqlLab,
+  },
+  {
+    path: '/dsense',
+    Component: Dsense,
+  },
+  {
+    path: '/relations',
+    Component: DviewRelation,
   },
 ];
 

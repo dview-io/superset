@@ -23,7 +23,7 @@ from . import (
     dynamic_plugins,
     health,
     sql_lab,
-    tags,
+    tags,dsense
 )
 from .log import api as log_api, views
 
@@ -39,4 +39,5 @@ __all__ = [
     "views",
     "sql_lab",
     "tags",
+     "dsense"
 ]
