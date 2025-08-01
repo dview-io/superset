@@ -333,10 +333,11 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     label: 'Relations',
     url: '/relations',
   };
+
   // if (enableChatbot || enableDsense) {
   // }
   if (enableDsense && newMenuData.menu.length > 0) {
-    newMenuData.menu.push(dsenseMenu);
+    newMenuData.menu.unshift(dsenseMenu);
     newMenuData.menu.push(dviewRelation);
   }
 

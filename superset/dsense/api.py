@@ -5,8 +5,9 @@ from flask_appbuilder.api import expose, permission_name, protect
 from superset.dsense.schemas import LoginSchema
 from superset.views.base_api import BaseSupersetApi, requires_json
 from flask_babel import lazy_gettext as _
-import requests  # or httpx for async support
+import requests
 from werkzeug.datastructures import Headers # type: ignore
+from flask_login import current_user
 
 
 class Dsense(BaseSupersetApi):
@@ -14,32 +15,18 @@ class Dsense(BaseSupersetApi):
     Custom API for handling user login by forwarding to COSMOS_URL.
     """
     resource_name = 'dsense'
-    include_route_methods = {"dsense_login"}
+    include_route_methods = {"dsense_login","get_dview_login"}
     csrf_exempt = True
 
-    @expose('/login', methods=["POST"])
-    @requires_json
+    @expose('/login', methods=["GET"])
+
    
     def dsense_login(self)-> Response:
         """
         Login API that forwards credentials to COSMOS_URL.
         ---
-        post:
+        get:
           summary: Forward login to COSMOS
-          requestBody:
-            description: User login data
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    email:
-                      type: string
-                      description: The email address of the user
-                    password:
-                      type: string
-                      description: The password for the user
           responses:
             200:
               description: Login successful
@@ -59,14 +46,7 @@ class Dsense(BaseSupersetApi):
               description: Internal server error
         """
         session = requests.Session()
-        payload = request.get_json(force=True)
-        
-        # Validate payload
-        schema = LoginSchema()
-        try:
-            data = schema.load(payload)
-        except ValidationError as err:
-            return self.response(400, message="Invalid input", result=err.messages, success=False)
+      
 
         # Prepare COSMOS login request
         cosmos_url = app.config.get("COSMOS_ENDPOINT")  # Ensure this is set in superset/config.py
@@ -78,14 +58,12 @@ class Dsense(BaseSupersetApi):
             "Content-Type": "application/json",
         }
 
-        try:
-            
+        try:      
             response = session.post(
                 login_endpoint,
-                json={"email": data["email"], "pass": data["password"]},
+                json={"email": current_user.email, "pass": app.config.get("LOGIN_PASSWORD")},
                 headers=headers,
             )
-            print(response.raw.headers)
         
             for cookie in response.raw.headers.getlist("set-cookie"):
                     token_cookie={"cookie_token":cookie}
@@ -102,3 +80,34 @@ class Dsense(BaseSupersetApi):
         except requests.exceptions.RequestException as e:
             return self.response(500, message=f"COSMOS API error: {str(e)}", success=False)
         
+    @expose('/login/dview', methods=["GET"])
+    def get_dview_login(self) -> Response:
+        """
+    Returns the currently authenticated user's username and email.
+    ---
+    get:
+      summary: Get current authenticated user info
+      responses:
+        200:
+          description: Authenticated user details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  email:
+                    type: string
+        401:
+          description: Not authenticated
+    """
+    
+        if  current_user.is_authenticated:
+          return jsonify({
+              "email": current_user.email,
+              "password": app.config.get("LOGIN_PASSWORD")
+          })
+        return self.response(401, message="Not authenticated", success=False)
+
+     

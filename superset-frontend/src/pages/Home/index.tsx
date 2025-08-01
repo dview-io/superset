@@ -17,6 +17,7 @@
  * under the License.
  */
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import {
   isFeatureEnabled,
   FeatureFlag,
@@ -212,6 +213,36 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
         },
       ],
     ];
+  }, []);
+
+  const SUPERSET_URL = `${window.location.origin}/api/v1`;
+  useEffect(() => {
+    const getCookie = (name: string): string | null => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+      return null;
+    };
+
+    const token = getCookie('token');
+    const hasBearerToken = token?.startsWith('Bearer ') ?? false;
+
+    if (!hasBearerToken) {
+      const loginToDsense = async (): Promise<void> => {
+        try {
+          await axios.get<{ cookie_token: string }>(
+            `${SUPERSET_URL}/dsense/login`,
+            {
+              withCredentials: true, // Important for receiving Set-Cookie from server
+            },
+          );
+        } catch (error) {
+          window.location.href = '/logout';
+        }
+      };
+
+      loginToDsense();
+    }
   }, []);
 
   useEffect(() => {

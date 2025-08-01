@@ -28,6 +28,9 @@ from flask_appbuilder.security.manager import AUTH_OAUTH
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
 from superset.dsense import flask_app_mutator
+from superset.custom_security.custom_security import DviewCustomSecurityManager
+from superset.custom_security.user_events import setup_user_hooks
+
 
 logger = logging.getLogger()
 
@@ -114,7 +117,7 @@ DSENSE_URL=os.getenv('DSENSE_URL')
 RELATIONS_URL=os.getenv('RELATIONS_URL')
 
 PROMPT_TEMPLATE="""
-fnrfn
+{prompt}
 """
 
 FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
@@ -169,6 +172,16 @@ AUTH_DB = True
 AUTH_TYPE = AUTH_DB
 # AUTH_TYPE = AUTH_OAUTH
 
+import logging
+
+# Set up logging to capture credentials
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+CUSTOM_SECURITY_MANAGER = DviewCustomSecurityManager
+
+
 
 
 
@@ -181,5 +194,9 @@ AUTH_USER_REGISTRATION = False
 AUTH_USER_REGISTRATION_ROLE = "Gamma"
 
 FAB_ADD_SECURITY_VIEWS = True
+setup_user_hooks()
+
+
+
 
 

@@ -172,7 +172,6 @@ const Header = () => {
   const chartIds = useChartIds();
 
   const enableChatBot = window.featureFlags.ENABLE_CHATBOT;
-  console.log('gaurav', enableChatBot);
 
   const extensionsRegistry = getExtensionsRegistry();
   const muiTheme = createTheme({
