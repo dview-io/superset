@@ -80,7 +80,7 @@ const defaultProps = {
 };
 
 const StyledTabsContainer = styled.div`
-  width: 100%;
+  width: 100vw;
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
 
   .dashboard-component-tabs-content {
@@ -131,6 +131,12 @@ const EmptyStateContainer = styled.div`
   border-radius: 8px;
   margin: 16px;
   min-height: 75vh;
+`;
+const TabContentWrapper = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden; /* Prevent content from overlapping */
 `;
 
 const EmptyStateIcon = styled.div`
@@ -357,7 +363,6 @@ const Tabs = props => {
           }),
         },
       );
-      console.log('gaurav', response);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -681,6 +686,9 @@ const Tabs = props => {
     <EmptyStateContainer id="dview-empty">
       <EmptyStateIcon>{error ? '\u26A0\uFE0F' : '\uD83D\uDD12'}</EmptyStateIcon>
       <EmptyStateDescription>
+        {error ? null : t('Premium Feature')}
+      </EmptyStateDescription>
+      <EmptyStateDescription>
         {error
           ? t('There was an error loading the data')
           : t('Please contact administrator.')}
@@ -694,6 +702,52 @@ const Tabs = props => {
       <LoadingSpinner>{hourglass}</LoadingSpinner>
       <LoadingText>{t('Loading tab data...')}</LoadingText>
     </LoadingContainer>
+  );
+
+  const renderTabContentFunction = useCallback(
+    (tabId, tabIndex, isCurrentTab) => {
+      const tabStatus = tabDataStatus[tabId];
+      const isLoading = loadingTabs.has(tabId);
+
+      // Priority 1: Show loading state
+      if (isLoading) {
+        return <LoadingMessage />;
+      } else if (!isLoading && tabStatus?.loaded && !tabStatus.hasData) {
+        return <EmptyStateMessage tabId={tabId} error={tabStatus.error} />;
+      }
+
+      return renderTabContent ? (
+        <DashboardComponent
+          id={tabId}
+          parentId={tabsComponent.id}
+          depth={depth}
+          index={tabIndex}
+          renderType={RENDER_TAB_CONTENT}
+          availableColumnCount={availableColumnCount}
+          columnWidth={columnWidth}
+          onResizeStart={onResizeStart}
+          onResize={onResize}
+          onResizeStop={onResizeStop}
+          onDropOnTab={handleDropOnTab}
+          isComponentVisible={
+            selectedTabIndex === tabIndex && isCurrentTabVisible
+          }
+        />
+      ) : null;
+    },
+    [
+      tabDataStatus,
+      loadingTabs,
+      handleRetry,
+      tabsComponent.id,
+      depth,
+      availableColumnCount,
+      columnWidth,
+      onResizeStart,
+      onResize,
+      onResizeStop,
+      handleDropOnTab,
+    ],
   );
 
   const renderChild = useCallback(
@@ -772,38 +826,9 @@ const Tabs = props => {
                   )
                 }
               >
-                {renderTabContent && (
-                  <>
-                    {/* Show loading state */}
-                    {isLoading && <LoadingMessage />}
-
-                    {/* Show empty state when no data or error */}
-                    {!isLoading && tabStatus?.loaded && !tabStatus.hasData && (
-                      <EmptyStateMessage
-                        tabId={tabId}
-                        error={tabStatus.error}
-                      />
-                    )}
-
-                    {!isLoading &&
-                      (!tabStatus?.loaded || tabStatus.hasData) && (
-                        <DashboardComponent
-                          id={tabId}
-                          parentId={tabsComponent.id}
-                          depth={depth}
-                          index={tabIndex}
-                          renderType={RENDER_TAB_CONTENT}
-                          availableColumnCount={availableColumnCount}
-                          columnWidth={columnWidth}
-                          onResizeStart={onResizeStart}
-                          onResize={onResize}
-                          onResizeStop={onResizeStop}
-                          onDropOnTab={handleDropOnTab}
-                          isComponentVisible={isCurrentTab}
-                        />
-                      )}
-                  </>
-                )}
+                <TabContentWrapper>
+                  {renderTabContentFunction(tabId, tabIndex, isCurrentTab)}
+                </TabContentWrapper>
               </LineEditableTabs.TabPane>
             );
           })}

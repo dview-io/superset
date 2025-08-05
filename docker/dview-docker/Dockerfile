@@ -1,4 +1,4 @@
-FROM dview/superset:5.1.6
+FROM dview/superset:5.2.1
 
 USER root
 
