@@ -19,8 +19,6 @@ class Dsense(BaseSupersetApi):
     csrf_exempt = True
 
     @expose('/login', methods=["GET"])
-
-   
     def dsense_login(self)-> Response:
         """
         Login API that forwards credentials to COSMOS_URL.

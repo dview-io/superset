@@ -701,7 +701,7 @@ export default function ChatBotDialog({ dashboardId }) {
   };
 
   return (
-    <>
+    <div id="dview-chatbot">
       <Badge badgeContent={unread} color="error">
         <ChatButton onClick={handleClickOpen} color="primary">
           <ChatIconWrapper>
@@ -934,6 +934,6 @@ export default function ChatBotDialog({ dashboardId }) {
         onConfirm={handleLogout}
         isLoggingOut={isLoggingOut}
       />
-    </>
+    </div>
   );
 }

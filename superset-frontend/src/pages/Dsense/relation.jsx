@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
 const DviewRelation = () => {
   const realtionsUrl = window.featureFlags.RELATIONS_URL;
+  const iframeRef = useRef(null);
   const [credentials, setCredentials] = useState({
     emailid: null,
     password: null,
@@ -14,7 +15,6 @@ const DviewRelation = () => {
   const ERROR_REDIRECT_URL = `${window.location.origin}/superset/welcome/`;
   const FALLBACK_URL = `${window.location.origin}/superset/welcome/`;
 
-  // Function to scroll to bottom
   const scrollToBottom = () => {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
@@ -22,7 +22,6 @@ const DviewRelation = () => {
     });
   };
 
-  // Auto scroll to bottom when component mounts
   useEffect(() => {
     scrollToBottom();
   }, []);
@@ -50,18 +49,11 @@ const DviewRelation = () => {
         if (error.response) {
           const status = error.response.status;
           if (status === 401 || status === 403) {
-            // Unauthorized - redirect to login
             window.location.href = ERROR_REDIRECT_URL;
             return;
-          } else if (status >= 500) {
-            console.error('Server error:', status);
           }
-        } else if (error.request) {
-          // Network error
-          console.error('Network error - no response received');
         }
 
-        // For any error, redirect after a short delay to show error message
         setTimeout(() => {
           window.location.href = ERROR_REDIRECT_URL;
         }, 3000);
@@ -73,111 +65,59 @@ const DviewRelation = () => {
     fetchCredentials();
   }, []);
 
-  useEffect(() => {
-    if (!credentials.emailid || !credentials.password || !realtionsUrl) {
-      return;
-    }
+  const handleIframeLoad = () => {
+    try {
+      const targetOrigin = new URL(realtionsUrl).origin;
 
-    const iframe = document.getElementById('cloud-relation');
-    if (!iframe) return;
-
-    const handleIframeLoad = () => {
-      try {
-        const targetOrigin = new URL(realtionsUrl).origin;
-
-        setTimeout(() => {
-          iframe.contentWindow?.postMessage(
-            {
-              supersetemail: credentials.emailid,
-              pass: credentials.password,
-            },
-            targetOrigin,
-          );
-        }, 500);
-      } catch (error) {
-        console.error('Error posting message to iframe:', error);
-        setError(error);
-        // Redirect on iframe communication error
-        setTimeout(() => {
-          window.location.href = ERROR_REDIRECT_URL;
-        }, 2000);
-      }
-    };
-
-    iframe.onload = handleIframeLoad;
-
-    // Handle iframe loading errors
-    iframe.onerror = () => {
-      console.error('Iframe failed to load');
-      setError(new Error('Failed to load Dsense application'));
+      setTimeout(() => {
+        iframeRef.current?.contentWindow?.postMessage(
+          {
+            supersetemail: credentials.emailid,
+            pass: credentials.password,
+          },
+          targetOrigin,
+        );
+      }, 500);
+    } catch (err) {
+      console.error('Error posting message to iframe:', err);
+      setError(err);
       setTimeout(() => {
         window.location.href = ERROR_REDIRECT_URL;
       }, 2000);
-    };
-  }, [realtionsUrl, credentials.emailid, credentials.password]);
+    }
+  };
 
-  // Handle case where realtionsUrl is not available
   if (!realtionsUrl) {
+    setTimeout(() => {
+      window.location.href = FALLBACK_URL;
+    }, 2000);
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          flexDirection: 'column',
-          gap: '20px',
-        }}
-      >
+      <div style={centeredStyle}>
         <h2>Configuration Error</h2>
         <p>Relations URL is not configured. Redirecting...</p>
-        {setTimeout(() => {
-          window.location.href = FALLBACK_URL;
-        }, 2000)}
       </div>
     );
   }
 
-  // Show loading state
-  if (isLoading) {
+  if (isLoading || !credentials.emailid || !credentials.password) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          flexDirection: 'column',
-          gap: '20px',
-        }}
-      >
+      <div style={centeredStyle}>
         <div>Loading...</div>
         <p>Fetching credentials...</p>
       </div>
     );
   }
 
-  // Show error state
   if (error) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          flexDirection: 'column',
-          gap: '20px',
-          color: 'red',
-        }}
-      >
+      <div style={{ ...centeredStyle, color: 'red' }}>
         <h2>Error Loading Relations</h2>
         <p>
           {error.response?.status === 401
-            ? 'Authentication required. Redirecting to login...'
+            ? 'Authentication required. Redirecting...'
             : error.response?.status >= 500
-              ? 'Server error. Please try again later. Redirecting...'
-              : 'Failed to load application. Redirecting...'}
+              ? 'Server error. Please try again later.'
+              : 'Failed to load application.'}
         </p>
         <p style={{ fontSize: '14px', color: '#666' }}>
           You will be redirected automatically in a few seconds.
@@ -190,13 +130,31 @@ const DviewRelation = () => {
     <div style={{ maxHeight: '100vh' }}>
       <iframe
         id="cloud-relation"
-        style={{ width: '100vw', height: '100vh' }}
+        ref={iframeRef}
         src={realtionsUrl}
-        title="Dsense"
+        title="Dview Relation"
+        onLoad={handleIframeLoad}
+        onError={() => {
+          console.error('Iframe failed to load');
+          setError(new Error('Failed to load Dview Relation iframe'));
+          setTimeout(() => {
+            window.location.href = ERROR_REDIRECT_URL;
+          }, 2000);
+        }}
+        style={{ width: '100vw', height: '100vh' }}
         sandbox="allow-scripts allow-same-origin allow-forms"
       />
     </div>
   );
+};
+
+const centeredStyle = {
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  height: '100vh',
+  flexDirection: 'column',
+  gap: '20px',
 };
 
 export default DviewRelation;
