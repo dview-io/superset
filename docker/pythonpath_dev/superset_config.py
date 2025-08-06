@@ -122,6 +122,13 @@ PROMPT_TEMPLATE="""
 {prompt}
 """
 
+DEFAULT_LABELIDS = ["adhoc.__uploads__.loan_against_property"]
+ENABLE_DSENSE = True
+DSENSE_URL = 'https://cloud.dview.io/superset/loader'
+RELATIONS_URL = 'https://cloud.dview.io/superset/relations'
+DEFAULT_SCHEMA_TAB = 'bi_tabs'
+DEFAULT_CATALOG_TAB = 'adhoc'
+
 FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
 "COSMOS_ENDPOINT":COSMOS_ENDPOINT,
 "LOGIN_USERNAME":LOGIN_USERNAME,

@@ -130,7 +130,9 @@ const EmptyStateContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.grayscale.light4};
   border-radius: 8px;
   margin: 16px;
-  min-height: 75vh;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
 `;
 const TabContentWrapper = styled.div`
   width: 100%;
@@ -183,9 +185,11 @@ const LoadingContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
   padding: 20px;
   text-align: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
 `;
 
 const LoadingSpinner = styled.div`
