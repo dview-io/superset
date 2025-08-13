@@ -14,7 +14,7 @@ def setup_user_hooks():
     def user_created(mapper, connection, target):
 
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
-        user_password = app.config.get("LOGIN_PASSWORD")
+        user_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
 
         email_id = target.email
         orgName = get_org_info(email_id)
@@ -64,6 +64,7 @@ def setup_user_hooks():
                 msg = f"Cosmos get user list failed: {user_list_response.status_code} - {user_list_response.text}"
                 app.logger.error(msg)
                 raise Exception(msg)
+            app.logger.info("Cosmos List successful. Proceeding with user insert.")
 
             matched_user = [
                 user
@@ -101,6 +102,9 @@ def setup_user_hooks():
                     msg = f"Cosmos role update failed: {update_role_response.status_code} - {update_role_response.text}"
                     app.logger.error(msg)
                     raise Exception(msg)
+                app.logger.info(
+                    "Cosmos update user to Admin successful. Proceeding with user update."
+                )
 
         except requests.exceptions.RequestException as e:
             app.logger.error(f"COSMOS API error during User creation: {str(e)}")
@@ -108,10 +112,8 @@ def setup_user_hooks():
 
     @event.listens_for(User, "after_update")
     def user_updated(mapper, connection, target):
-        print(f"[USER UPDATED] {target.username}")
-        print(f"New hashed password: {target.password}")
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
-        user_password = app.config.get("LOGIN_PASSWORD")
+        user_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
         session = requests.Session()
         email_id = target.email
         orgName = get_org_info(email_id)
@@ -124,7 +126,10 @@ def setup_user_hooks():
         try:
             response1 = session.post(
                 login_endpoint,
-                json={"email": target.email, "pass": app.config.get("LOGIN_PASSWORD")},
+                json={
+                    "email": target.email,
+                    "pass": app.config.get("DEFAULT_PASSWORD_FOR_USER"),
+                },
                 headers=headers,
             )
             if response1.status_code != 200:
@@ -159,7 +164,6 @@ def setup_user_hooks():
 
     @event.listens_for(User, "after_delete")
     def user_deleted(mapper, connection, target):
-        print(f"[USER DELETED] Username: {target.username}, Email: {target.email}")
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
 
         email_id = target.email
@@ -179,6 +183,9 @@ def setup_user_hooks():
                 msg = f"Cosmos get user list failed: {user_list_response.status_code} - {user_list_response.text}"
                 app.logger.error(msg)
                 raise Exception(msg)
+            app.logger.info(
+                "Cosmos get user list  successful. Proceeding with user delete."
+            )
 
             matched_user = [
                 user
@@ -187,7 +194,7 @@ def setup_user_hooks():
             ]
             if len(matched_user) > 0:
                 user_delete_endpoint = f"{cosmos_url}/orchestrator/auth/dview/user?id={matched_user[0]['id']}&email={email_id}&org={orgName}"
-                user_delete_response = session.get(
+                user_delete_response = session.delete(
                     user_delete_endpoint,
                     headers=headers,
                 )
@@ -202,5 +209,5 @@ def setup_user_hooks():
                 raise Exception(msg)
 
         except requests.exceptions.RequestException as e:
-            app.logger.error(f"COSMOS API error during User creation: {str(e)}")
+            app.logger.error(f"COSMOS API error during User deletion: {str(e)}")
             return False
