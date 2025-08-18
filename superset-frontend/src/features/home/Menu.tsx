@@ -313,6 +313,30 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     ...data,
   };
   const enableDsense = window.featureFlags.ENABLE_DSENSE;
+  const SUPERSET_URL = `${window.location.origin}/api/v1`;
+  const [enablePolicy, setEnablePolicy] = useState(false);
+
+  useEffect(() => {
+    async function checkAdminRole() {
+      try {
+        const resp = await fetch(`${SUPERSET_URL}/dsense/dview/role`);
+        if (!resp.ok) {
+          setEnablePolicy(false);
+          return; // don’t modify menu
+        }
+        const json = await resp.json();
+
+        if (json.success && json.is_admin) {
+          // Add Policy section
+          setEnablePolicy(true);
+        }
+      } catch (err) {
+        setEnablePolicy(false);
+      }
+    }
+
+    checkAdminRole();
+  }, []);
 
   // Menu items that should go into settings dropdown
   const settingsMenus = {
@@ -333,12 +357,33 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     label: 'Relations',
     url: '/relations',
   };
+  const dviewPipelines = {
+    name: 'Pipelienes',
+    icon: 'fa-dashboard',
+    label: 'Pipelines',
+    url: '/pipelines',
+  };
+  const dviewDags = {
+    name: 'Dags',
+    icon: 'fa-dashboard',
+    label: 'Dags',
+    url: '/dags',
+  };
+  const dviewWorkflows = {
+    name: 'Workflows',
+    icon: 'fa-dashboard',
+    label: 'Workflows',
+    url: '/workflows',
+  };
 
   // if (enableChatbot || enableDsense) {
   // }
   if (enableDsense && newMenuData.menu.length > 0) {
     newMenuData.menu.unshift(dsenseMenu);
+    newMenuData.menu.push(dviewPipelines);
+    newMenuData.menu.push(dviewDags);
     newMenuData.menu.push(dviewRelation);
+    newMenuData.menu.push(dviewWorkflows);
   }
 
   // Cycle through menu.menu to build out cleanedMenu and settings
@@ -376,6 +421,25 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
 
   newMenuData.menu = cleanedMenu;
   newMenuData.settings = settings;
+  console.log('gaurav policy', enablePolicy);
+  if (enablePolicy && newMenuData?.settings?.length > 0) {
+    const policy_child = [];
+    const dviewPolicies = {
+      name: 'Polices',
+      icon: 'fa-user',
+      label: 'Policy',
+      url: '/policy',
+    };
+    policy_child.push(dviewPolicies);
+    const policy_section = {
+      name: 'Policy',
+      icon: 'fa-cogs',
+      label: 'Policy',
+      childs: policy_child,
+    };
+
+    newMenuData.settings.push(policy_section);
+  }
 
   return <Menu data={newMenuData} {...rest} />;
 }

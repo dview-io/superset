@@ -19,7 +19,7 @@ def setup_user_hooks():
         email_id = target.email
         orgName = get_org_info(email_id)
         print(
-            f"New user created: {target.username}{target.password}{target.first_name}"
+            f"New user created: {target.username}{target.password}{target.first_name}{orgName}"
         )
 
         session = requests.Session()

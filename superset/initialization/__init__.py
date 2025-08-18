@@ -184,8 +184,14 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.views.sqllab import SqllabView
         from superset.views.tags import TagModelView, TagView
         from superset.views.users.api import CurrentUserRestApi, UserRestApi
-        from superset.views.dsense.views import DsenseApi,RelationsApi
-
+        from superset.views.dsense.views import (
+            DsenseApi,
+            RelationsApi,
+            PipelinesApi,
+            DagsApi,
+            PolicyApi,
+            WorkflowApi,
+        )
 
         set_app_error_handlers(self.superset_app)
 
@@ -310,6 +316,10 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_view_no_menu(ReportView)
         appbuilder.add_view_no_menu(DsenseApi)
         appbuilder.add_view_no_menu(RelationsApi)
+        appbuilder.add_view_no_menu(PipelinesApi)
+        appbuilder.add_view_no_menu(PolicyApi)
+        appbuilder.add_view_no_menu(WorkflowApi)
+        appbuilder.add_view_no_menu(DagsApi)
 
         #
         # Add links

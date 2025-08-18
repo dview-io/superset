@@ -61,6 +61,7 @@ export enum FeatureFlag {
   EnableDashboardDownloadWebDriverScreenshot = 'ENABLE_DASHBOARD_DOWNLOAD_WEBDRIVER_SCREENSHOT',
   EnableDsense = 'ENABLE_DSENSE',
   EnableChatbot = 'ENABLE_CHATBOT',
+  EnablePolicy = 'ENABLE_POLICY',
 }
 
 export type ScheduleQueriesProps = {
