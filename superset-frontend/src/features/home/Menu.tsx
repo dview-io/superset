@@ -311,6 +311,7 @@ export function Menu({
 export default function MenuWrapper({ data, ...rest }: MenuProps) {
   const newMenuData = {
     ...data,
+    menu: [...data.menu],
   };
   const enableDsense = window.featureFlags.ENABLE_DSENSE;
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
@@ -376,8 +377,6 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     url: '/workflows',
   };
 
-  // if (enableChatbot || enableDsense) {
-  // }
   if (enableDsense && newMenuData.menu.length > 0) {
     newMenuData.menu.unshift(dsenseMenu);
     newMenuData.menu.push(dviewPipelines);
@@ -421,7 +420,7 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
 
   newMenuData.menu = cleanedMenu;
   newMenuData.settings = settings;
-  console.log('gaurav policy', enablePolicy);
+
   if (enablePolicy && newMenuData?.settings?.length > 0) {
     const policy_child = [];
     const dviewPolicies = {
