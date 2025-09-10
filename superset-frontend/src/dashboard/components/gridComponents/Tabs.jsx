@@ -263,6 +263,8 @@ const Tabs = props => {
   const [loadingTabs, setLoadingTabs] = useState(new Set()); // Track loading state
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
 
+  const [showChatBot, setShowChatBot] = useState(false);
+
   const prevActiveKey = usePrevious(activeKey);
   const prevDashboardId = usePrevious(props.dashboardId);
   const prevDirectPathToChild = usePrevious(directPathToChild);
@@ -334,6 +336,9 @@ const Tabs = props => {
   const DEFAULT_SCHEMA_TAB = window.featureFlags.DEFAULT_SCHEMA_TAB;
   const DEFAULT_CATALOG_TAB = window.featureFlags.DEFAULT_CATALOG_TAB;
 
+  const DEFAULT_SCHEMA_CHATBOT = window.featureFlags.DEFAULT_SCHEMA_CHATBOT;
+  const DEFAULT_TABLE_CHATBOT = window.featureFlags.DEFAULT_TABLE_CHATBOT;
+
   // API call function
   const fetchTabData = useCallback(async (tabId, tabName) => {
     try {
@@ -368,11 +373,33 @@ const Tabs = props => {
         },
       );
 
+      const sql_query_for_chatbot = `SELECT * FROM ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_CHATBOT}.${DEFAULT_TABLE_CHATBOT} LIMIT 1`;
+
+      const chatbotresponse = await fetch(
+        `${COSMOS_URL}/orchestrator/analytics/execute/dview?email=${emailid}&org=${orgName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            catalog: DEFAULT_CATALOG_TAB,
+            schema: DEFAULT_SCHEMA_CHATBOT,
+            query: sql_query_for_chatbot,
+            table: DEFAULT_TABLE_CHATBOT,
+          }),
+        },
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      if (!chatbotresponse.ok) {
+        throw new Error(`HTTP error! status: ${chatbotresponse.status}`);
+      }
 
       const data = await response.json();
+      const chatdata = await chatbotresponse.json();
 
       // Step 4: Check for known query errors in response
       const isResponseError =
@@ -385,7 +412,32 @@ const Tabs = props => {
           data[0].response.includes('error') ||
           data[0].response.includes('Error'));
 
+      const isResponseChatbotError =
+        Array.isArray(chatdata) &&
+        chatdata.length > 0 &&
+        typeof chatdata[0]?.response === 'string' &&
+        (chatdata[0].response.includes(
+          'Access Denied: Cannot access catalog',
+        ) ||
+          chatdata[0].response.includes('Query failed') ||
+          chatdata[0].response.includes('does not exist') ||
+          chatdata[0].response.includes('error') ||
+          chatdata[0].response.includes('Error'));
+
       const hasError = false;
+
+      const hasChatbotData =
+        !isResponseChatbotError &&
+        (Array.isArray(chatdata) || // even empty arrays are valid
+          (typeof chatdata === 'object' &&
+            !Array.isArray(chatdata) &&
+            Object.keys(chatdata).length > 0));
+
+      if (hasChatbotData) {
+        setShowChatBot(true);
+      } else {
+        setShowChatBot(false);
+      }
 
       // Step 6: Determine if valid data exists
       const hasData =
@@ -645,9 +697,11 @@ const Tabs = props => {
 
     if (!chatbotDiv) return;
 
-    const shouldShow = tabStatus?.hasData && tabStatus?.error === null;
+    const shouldShow =
+      tabStatus?.hasData && showChatBot && tabStatus?.error === null;
+
     chatbotDiv.style.display = shouldShow ? 'block' : 'none';
-  }, [selectedTabIndex, tabDataStatus, isCurrentTabVisible]);
+  }, [selectedTabIndex, tabDataStatus, isCurrentTabVisible, showChatBot]);
 
   const showDropIndicators = useCallback(
     currentDropTabIndex =>
