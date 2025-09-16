@@ -272,7 +272,7 @@ export default function ChatBotDialog({ dashboardId }) {
 
     try {
       let userName = null;
-      await axios.get(`${SUPERSET_URL}/me`).then(response => {
+      await axios.get(`${SUPERSET_URL}/me/`).then(response => {
         userName = response.data?.result?.first_name;
       });
 
