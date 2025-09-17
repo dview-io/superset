@@ -352,7 +352,7 @@ const Tabs = props => {
       if (!emailid) throw new Error(`No email`);
 
       // Step 2: Build query
-      const sql_query = `SELECT * FROM ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_TAB}.${tabName} LIMIT 1`;
+      const sql_query = `SELECT * FROM ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_TAB}.${tabId.replaceAll('-', '_')}${tabName} LIMIT 1`;
       const orgDomain = emailid.split('@')[1] || 'NA';
       const orgName = orgDomain.split('.')[0] || 'NA';
 
