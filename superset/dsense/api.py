@@ -9,10 +9,13 @@ import requests
 from werkzeug.datastructures import Headers  # type: ignore
 from flask_login import current_user
 from superset.custom_security.utils_file import get_org_info
+from flask import request
 
-headers = {
-    "Content-Type": "application/json",
-}
+
+referer = cosmos_url = app.config.get("APPOLO_REFERER")
+origin = cosmos_url = app.config.get("APPOLO_ORIGIN")
+
+headers = {"Content-Type": "application/json", "Origin": origin, "Referer": referer}
 
 
 class Dsense(BaseSupersetApi):
@@ -63,6 +66,8 @@ class Dsense(BaseSupersetApi):
         login_endpoint = f"{cosmos_url}/orchestrator/auth/email-login"
         headers = {
             "Content-Type": "application/json",
+            "Origin": origin,
+            "Referer": referer,
         }
 
         try:
