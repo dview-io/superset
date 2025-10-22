@@ -7,14 +7,16 @@ class DviewCustomSecurityManager(SupersetSecurityManager):
     def auth_user_db(self, username, password):
         """Override to capture login credentials"""
 
+        dview_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
+
         # Get the user from database to access hashed password
         user = self.find_user(username=username)
-        if user:
-            cosmos_success = self.login_to_dview(user.email, password)
+        # if user:
+        #     cosmos_success = self.login_to_dview(user.email, dview_password)
 
-            # If cosmos login failed, don't proceed with normal auth
-            if not cosmos_success:
-                return None
+        #     # If cosmos login failed, don't proceed with normal auth
+        #     if not cosmos_success:
+        #         return None
 
         return super().auth_user_db(username, password)
 

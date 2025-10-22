@@ -87,7 +87,7 @@ def setup_user_hooks():
                     "userSource": matched_user[0]["userSource"],
                     "userRoleList": ["Admin"],
                 }
-                update_user_role_endpoint = f"{cosmos_url}/orchestrator/auth/dview/user?email={email_id}&org={orgName}"
+                update_user_role_endpoint = f"{cosmos_url}/orchestrator/auth/{orgName}/user?email={email_id}&org={orgName}"
 
                 update_role_response = session.put(
                     update_user_role_endpoint,
