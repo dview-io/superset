@@ -11,12 +11,12 @@ class DviewCustomSecurityManager(SupersetSecurityManager):
 
         # Get the user from database to access hashed password
         user = self.find_user(username=username)
-        # if user:
-        #     cosmos_success = self.login_to_dview(user.email, dview_password)
+        if user:
+            cosmos_success = self.login_to_dview(user.email, dview_password)
 
-        #     # If cosmos login failed, don't proceed with normal auth
-        #     if not cosmos_success:
-        #         return None
+            # If cosmos login failed, don't proceed with normal auth
+            if not cosmos_success:
+                return None
 
         return super().auth_user_db(username, password)
 
