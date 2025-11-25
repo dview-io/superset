@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
-const DviewRelation = () => {
-  const realtionsUrl = window.featureFlags.RELATIONS_URL;
+const Dags = () => {
+  const dags_url = window.featureFlags.DAGS_URL;
   const iframeRef = useRef(null);
   const [credentials, setCredentials] = useState({
     emailid: null,
@@ -46,12 +46,10 @@ const DviewRelation = () => {
         console.error('API Error:', error);
         setError(error);
 
-        if (error.response) {
-          const status = error.response.status;
-          if (status === 401 || status === 403) {
-            window.location.href = ERROR_REDIRECT_URL;
-            return;
-          }
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          window.location.href = ERROR_REDIRECT_URL;
+          return;
         }
 
         setTimeout(() => {
@@ -67,7 +65,7 @@ const DviewRelation = () => {
 
   const handleIframeLoad = () => {
     try {
-      const targetOrigin = new URL(realtionsUrl).origin;
+      const targetOrigin = new URL(dags_url).origin;
 
       setTimeout(() => {
         iframeRef.current?.contentWindow?.postMessage(
@@ -77,6 +75,8 @@ const DviewRelation = () => {
           },
           targetOrigin,
         );
+
+        setTimeout(scrollToBottom, 1000);
       }, 500);
     } catch (err) {
       console.error('Error posting message to iframe:', err);
@@ -87,14 +87,16 @@ const DviewRelation = () => {
     }
   };
 
-  if (!realtionsUrl) {
-    setTimeout(() => {
-      window.location.href = FALLBACK_URL;
-    }, 2000);
+  if (!dags_url) {
+    useEffect(() => {
+      setTimeout(() => {
+        window.location.href = FALLBACK_URL;
+      }, 2000);
+    }, []);
     return (
       <div style={centeredStyle}>
         <h2>Configuration Error</h2>
-        <p>Relations URL is not configured. Redirecting...</p>
+        <p>Dags URL is not configured. Redirecting...</p>
       </div>
     );
   }
@@ -111,13 +113,13 @@ const DviewRelation = () => {
   if (error) {
     return (
       <div style={{ ...centeredStyle, color: 'red' }}>
-        <h2>Error Loading Relations</h2>
+        <h2>Error Loading Dags</h2>
         <p>
           {error.response?.status === 401
-            ? 'Authentication required. Redirecting...'
+            ? 'Authentication required. Redirecting to login...'
             : error.response?.status >= 500
               ? 'Server error. Please try again later.'
-              : 'Failed to load application.'}
+              : 'Failed to load application. Redirecting...'}
         </p>
         <p style={{ fontSize: '14px', color: '#666' }}>
           You will be redirected automatically in a few seconds.
@@ -129,14 +131,14 @@ const DviewRelation = () => {
   return (
     <div style={{ maxHeight: '100vh' }}>
       <iframe
-        id="cloud-relation"
+        id="cloud-dags"
         ref={iframeRef}
-        src={realtionsUrl}
-        title="Dview Relation"
+        src={dags_url}
+        title="Dags"
         onLoad={handleIframeLoad}
         onError={() => {
           console.error('Iframe failed to load');
-          setError(new Error('Failed to load Dview Relation iframe'));
+          setError(new Error('Failed to load Dags application'));
           setTimeout(() => {
             window.location.href = ERROR_REDIRECT_URL;
           }, 2000);
@@ -157,4 +159,4 @@ const centeredStyle = {
   gap: '20px',
 };
 
-export default DviewRelation;
+export default Dags;

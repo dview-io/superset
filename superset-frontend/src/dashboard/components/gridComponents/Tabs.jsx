@@ -37,6 +37,9 @@ import { componentShape } from '../../util/propShapes';
 import { NEW_TAB_ID } from '../../util/constants';
 import { RENDER_TAB, RENDER_TAB_CONTENT } from './Tab';
 import { TABS_TYPE, TAB_TYPE } from '../../util/componentTypes';
+import axios from 'axios';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import LockIcon from '@mui/icons-material/Lock';
 
 const propTypes = {
   id: PropTypes.string.isRequired,
@@ -77,7 +80,7 @@ const defaultProps = {
 };
 
 const StyledTabsContainer = styled.div`
-  width: 100%;
+  width: 100vw;
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
 
   .dashboard-component-tabs-content {
@@ -115,6 +118,98 @@ const DropIndicator = styled.div`
   top: 0;
   ${({ pos }) => (pos === 'left' ? 'left: -4px' : 'right: -4px')};
   border-radius: 2px;
+`;
+
+const EmptyStateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  background-color: ${({ theme }) => theme.colors.grayscale.light4};
+  border-radius: 8px;
+  margin: 16px;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+`;
+const TabContentWrapper = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden; /* Prevent content from overlapping */
+`;
+
+const EmptyStateIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 16px;
+`;
+
+const EmptyStateTitle = styled.h3`
+  margin-bottom: 8px;
+  color: ${({ theme }) => theme.colors.grayscale.dark1};
+  font-size: 18px;
+  font-weight: 600;
+`;
+
+const EmptyStateDescription = styled.p`
+  color: ${({ theme }) => theme.colors.grayscale.base};
+  max-width: 400px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+`;
+
+const RetryButton = styled.button`
+  padding: 8px 16px;
+  background-color: ${({ theme }) => theme.colors.primary.base};
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.primary.dark1};
+  }
+
+  &:disabled {
+    background-color: ${({ theme }) => theme.colors.grayscale.light1};
+    cursor: not-allowed;
+  }
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+`;
+
+const LoadingSpinner = styled.div`
+  font-size: 24px;
+  margin-bottom: 16px;
+  animation: spin 2s linear infinite;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.p`
+  color: ${({ theme }) => theme.colors.grayscale.base};
+  font-size: 16px;
 `;
 
 const CloseIconWithDropIndicator = props => (
@@ -162,6 +257,14 @@ const Tabs = props => {
   const [dropPosition, setDropPosition] = useState(null);
   const [dragOverTabIndex, setDragOverTabIndex] = useState(null);
   const [draggingTabId, setDraggingTabId] = useState(null);
+
+  // New state for API data tracking
+  const [tabDataStatus, setTabDataStatus] = useState({}); // Track data status for each tab
+  const [loadingTabs, setLoadingTabs] = useState(new Set()); // Track loading state
+  const SUPERSET_URL = `${window.location.origin}/api/v1`;
+
+  const [showChatBot, setShowChatBot] = useState(false);
+
   const prevActiveKey = usePrevious(activeKey);
   const prevDashboardId = usePrevious(props.dashboardId);
   const prevDirectPathToChild = usePrevious(directPathToChild);
@@ -227,10 +330,191 @@ const Tabs = props => {
     prevTabIds,
   ]);
 
+  const layout = useSelector(state => state.dashboardLayout.present);
+
+  const COSMOS_URL = window.featureFlags.COSMOS_ENDPOINT;
+  const DEFAULT_SCHEMA_TAB = window.featureFlags.DEFAULT_SCHEMA_TAB;
+  const DEFAULT_CATALOG_TAB = window.featureFlags.DEFAULT_CATALOG_TAB;
+
+  const DEFAULT_SCHEMA_CHATBOT = window.featureFlags.DEFAULT_SCHEMA_CHATBOT;
+  const DEFAULT_TABLE_CHATBOT = window.featureFlags.DEFAULT_TABLE_CHATBOT;
+
+  // API call function
+  const fetchTabData = useCallback(async (tabId, tabName) => {
+    try {
+      setLoadingTabs(prev => new Set([...prev, tabId]));
+
+      // Step 1: Get email
+      const response_email = await axios.get(
+        `${SUPERSET_URL}/dsense/login/dview`,
+      );
+      const emailid = response_email?.data?.email;
+      if (!emailid) throw new Error(`No email`);
+
+      // Step 2: Build query
+      const sql_query = `SELECT * FROM ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_TAB}.${tabId.replaceAll('-', '_')}${tabName} LIMIT 1`;
+      const orgDomain = emailid.split('@')[1] || 'NA';
+      const orgName = orgDomain.split('.')[0] || 'NA';
+
+      const if_not_exists_create_table_statement = `CREATE TABLE IF NOT EXISTS  ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_TAB}.${tabId.replaceAll('-', '_')}${tabName} (id bigint) `;
+      const if_not_exists_create_table_statement_response = await fetch(
+        `${COSMOS_URL}/orchestrator/analytics/execute/dview?email=${emailid}&org=${orgName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            catalog: DEFAULT_CATALOG_TAB,
+            schema: DEFAULT_SCHEMA_TAB,
+            query: if_not_exists_create_table_statement,
+            table: '',
+          }),
+        },
+      );
+
+      if (!if_not_exists_create_table_statement_response.ok) {
+        throw new Error(
+          `HTTP error! status: ${if_not_exists_create_table_statement_response.status}`,
+        );
+      }
+      // Step 3: Fetch data from Cosmos
+      const response = await fetch(
+        `${COSMOS_URL}/orchestrator/analytics/execute/dview?email=${emailid}&org=${orgName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            catalog: DEFAULT_CATALOG_TAB,
+            schema: DEFAULT_SCHEMA_TAB,
+            query: sql_query,
+            table: '',
+          }),
+        },
+      );
+
+      const sql_query_for_chatbot = `SELECT * FROM ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_CHATBOT}.${DEFAULT_TABLE_CHATBOT} LIMIT 1`;
+
+      const chatbotresponse = await fetch(
+        `${COSMOS_URL}/orchestrator/analytics/execute/dview?email=${emailid}&org=${orgName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            catalog: DEFAULT_CATALOG_TAB,
+            schema: DEFAULT_SCHEMA_CHATBOT,
+            query: sql_query_for_chatbot,
+            table: DEFAULT_TABLE_CHATBOT,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      if (!chatbotresponse.ok) {
+        throw new Error(`HTTP error! status: ${chatbotresponse.status}`);
+      }
+
+      const data = await response.json();
+      const chatdata = await chatbotresponse.json();
+
+      // Step 4: Check for known query errors in response
+      const isResponseError =
+        Array.isArray(data) &&
+        data.length > 0 &&
+        typeof data[0]?.response === 'string' &&
+        (data[0].response.includes('Access Denied: Cannot access catalog') ||
+          data[0].response.includes('Query failed') ||
+          data[0].response.includes('does not exist') ||
+          data[0].response.includes('error') ||
+          data[0].response.includes('Error'));
+
+      const isResponseChatbotError =
+        Array.isArray(chatdata) &&
+        chatdata.length > 0 &&
+        typeof chatdata[0]?.response === 'string' &&
+        (chatdata[0].response.includes(
+          'Access Denied: Cannot access catalog',
+        ) ||
+          chatdata[0].response.includes('Query failed') ||
+          chatdata[0].response.includes('does not exist') ||
+          chatdata[0].response.includes('error') ||
+          chatdata[0].response.includes('Error'));
+
+      const hasError = false;
+
+      const hasChatbotData =
+        !isResponseChatbotError &&
+        (Array.isArray(chatdata) || // even empty arrays are valid
+          (typeof chatdata === 'object' &&
+            !Array.isArray(chatdata) &&
+            Object.keys(chatdata).length > 0));
+
+      if (hasChatbotData) {
+        setShowChatBot(true);
+      } else {
+        setShowChatBot(false);
+      }
+
+      // Step 6: Determine if valid data exists
+      const hasData =
+        !isResponseError &&
+        (Array.isArray(data) || // even empty arrays are valid
+          (typeof data === 'object' &&
+            !Array.isArray(data) &&
+            Object.keys(data).length > 0));
+      // Step 5: Store result
+      setTabDataStatus(prev => ({
+        ...prev,
+        [tabId]: {
+          hasData,
+          data,
+          error: hasError
+            ? data?.error || data[0]?.response || 'Unknown error occurred'
+            : null,
+          loaded: true,
+        },
+      }));
+    } catch (error) {
+      console.error(`Error fetching data for tab ${tabName}:`, error);
+      setTabDataStatus(prev => ({
+        ...prev,
+        [tabId]: {
+          hasData: false,
+          data: null,
+          error: error.message,
+          loaded: true,
+        },
+      }));
+    } finally {
+      setLoadingTabs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(tabId);
+        return newSet;
+      });
+    }
+  }, []);
+
   const handleClickTab = useCallback(
-    tabIndex => {
+    async tabIndex => {
       const { component } = props;
       const { children: tabIds } = component;
+      const tabId = tabIds[tabIndex];
+
+      // ✅ Get tab name from layout
+      const tabComponent = layout[tabId];
+      const tabName = tabComponent?.meta?.text
+        ?.replace(
+          /[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}]/gu,
+          '',
+        )
+        .trim()
+        .replace(/\s+/g, '_');
 
       if (tabIndex !== selectedTabIndex) {
         const pathToTabIndex = getDirectPathToTabIndex(component, tabIndex);
@@ -242,7 +526,13 @@ const Tabs = props => {
 
         props.onChangeTab({ pathToTabIndex });
       }
+
       setActiveKey(tabIds[tabIndex]);
+
+      // Fetch data for the clicked tab if not already loaded
+      if (!tabDataStatus[tabId]?.loaded && !loadingTabs.has(tabId)) {
+        await fetchTabData(tabId, tabName);
+      }
     },
     [
       props.component,
@@ -250,6 +540,10 @@ const Tabs = props => {
       props.onChangeTab,
       selectedTabIndex,
       setActiveKey,
+      layout,
+      tabDataStatus,
+      loadingTabs,
+      fetchTabData,
     ],
   );
 
@@ -327,6 +621,7 @@ const Tabs = props => {
   const handleEdit = useCallback(
     (event, action) => {
       const { component, createComponent } = props;
+
       if (action === 'add') {
         // Prevent the tab container to be selected
         event?.stopPropagation?.();
@@ -373,6 +668,32 @@ const Tabs = props => {
     }
   }, []);
 
+  // Retry function for failed API calls
+  const handleRetry = useCallback(
+    tabId => {
+      // Remove the error state and retry
+      setTabDataStatus(prev => {
+        const newState = { ...prev };
+        delete newState[tabId];
+        return newState;
+      });
+
+      const tabIds = props.component.children;
+      const tabIndex = tabIds.indexOf(tabId);
+      const tabComponent = layout[tabId];
+      const tabName = tabComponent?.meta?.text
+        ?.replace(
+          /[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}]/gu,
+          '',
+        )
+        .trim()
+        .replace(/\s+/g, '_');
+
+      fetchTabData(tabId, tabName);
+    },
+    [props.component.children, layout, fetchTabData],
+  );
+
   const {
     depth,
     component: tabsComponent,
@@ -391,6 +712,19 @@ const Tabs = props => {
 
   const { children: tabIds } = tabsComponent;
 
+  useEffect(() => {
+    const tabId = tabIds[selectedTabIndex];
+    const tabStatus = tabDataStatus[tabId];
+    const chatbotDiv = document.getElementById('dview-chatbot');
+
+    if (!chatbotDiv) return;
+
+    const shouldShow =
+      tabStatus?.hasData && showChatBot && tabStatus?.error === null;
+
+    chatbotDiv.style.display = shouldShow ? 'block' : 'none';
+  }, [selectedTabIndex, tabDataStatus, isCurrentTabVisible, showChatBot]);
+
   const showDropIndicators = useCallback(
     currentDropTabIndex =>
       currentDropTabIndex === dragOverTabIndex && {
@@ -404,6 +738,7 @@ const Tabs = props => {
     tabID => draggingTabId === tabID,
     [draggingTabId],
   );
+  const hourglass = '\u231B';
 
   let tabsToHighlight;
   const highlightedFilterId =
@@ -411,6 +746,89 @@ const Tabs = props => {
   if (highlightedFilterId) {
     tabsToHighlight = nativeFilters.filters[highlightedFilterId]?.tabsInScope;
   }
+  useEffect(() => {
+    const tabId = initActiveKey;
+    const tabComponent = layout[tabId];
+    const tabName = tabComponent?.meta?.text
+      ?.replace(
+        /[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}]/gu,
+        '',
+      )
+      .trim()
+      .replace(/\s+/g, '_');
+
+    if (!tabDataStatus[tabId]?.loaded && !loadingTabs.has(tabId)) {
+      fetchTabData(tabId, tabName);
+    }
+  }, [initActiveKey, layout, fetchTabData, tabDataStatus, loadingTabs]);
+
+  const EmptyStateMessage = ({ tabId = null, error = null }) => (
+    <EmptyStateContainer id="dview-empty">
+      <EmptyStateIcon>{error ? '\u26A0\uFE0F' : '\uD83D\uDD12'}</EmptyStateIcon>
+      <EmptyStateDescription>
+        {error ? null : t('Premium Feature')}
+      </EmptyStateDescription>
+      <EmptyStateDescription>
+        {error
+          ? t('There was an error loading the data')
+          : t('Please contact administrator.')}
+      </EmptyStateDescription>
+    </EmptyStateContainer>
+  );
+
+  // Loading component
+  const LoadingMessage = () => (
+    <LoadingContainer id="dview-loading">
+      <LoadingSpinner>{hourglass}</LoadingSpinner>
+      <LoadingText>{t('Loading tab data...')}</LoadingText>
+    </LoadingContainer>
+  );
+
+  const renderTabContentFunction = useCallback(
+    (tabId, tabIndex, isCurrentTab) => {
+      const tabStatus = tabDataStatus[tabId];
+      const isLoading = loadingTabs.has(tabId);
+
+      // Priority 1: Show loading state
+      if (isLoading) {
+        return <LoadingMessage />;
+      } else if (!isLoading && tabStatus?.loaded && !tabStatus.hasData) {
+        return <EmptyStateMessage tabId={tabId} error={tabStatus.error} />;
+      }
+
+      return renderTabContent ? (
+        <DashboardComponent
+          id={tabId}
+          parentId={tabsComponent.id}
+          depth={depth}
+          index={tabIndex}
+          renderType={RENDER_TAB_CONTENT}
+          availableColumnCount={availableColumnCount}
+          columnWidth={columnWidth}
+          onResizeStart={onResizeStart}
+          onResize={onResize}
+          onResizeStop={onResizeStop}
+          onDropOnTab={handleDropOnTab}
+          isComponentVisible={
+            selectedTabIndex === tabIndex && isCurrentTabVisible
+          }
+        />
+      ) : null;
+    },
+    [
+      tabDataStatus,
+      loadingTabs,
+      handleRetry,
+      tabsComponent.id,
+      depth,
+      availableColumnCount,
+      columnWidth,
+      onResizeStart,
+      onResize,
+      onResizeStop,
+      handleDropOnTab,
+    ],
+  );
 
   const renderChild = useCallback(
     ({ dragSourceRef: tabsDragSourceRef }) => (
@@ -435,72 +853,65 @@ const Tabs = props => {
           data-test="nav-list"
           type={editMode ? 'editable-card' : 'card'}
         >
-          {tabIds.map((tabId, tabIndex) => (
-            <LineEditableTabs.TabPane
-              key={tabId}
-              tab={
-                removeDraggedTab(tabId) ? (
-                  <></>
-                ) : (
-                  <>
-                    {showDropIndicators(tabIndex).left && (
-                      <DropIndicator
-                        className="drop-indicator-left"
-                        pos="left"
+          {tabIds.map((tabId, tabIndex) => {
+            const isCurrentTab =
+              selectedTabIndex === tabIndex && isCurrentTabVisible;
+            const tabStatus = tabDataStatus[tabId];
+            const isLoading = loadingTabs.has(tabId);
+
+            return (
+              <LineEditableTabs.TabPane
+                key={tabId}
+                tab={
+                  removeDraggedTab(tabId) ? (
+                    <></>
+                  ) : (
+                    <>
+                      {showDropIndicators(tabIndex).left && (
+                        <DropIndicator
+                          className="drop-indicator-left"
+                          pos="left"
+                        />
+                      )}
+                      <DashboardComponent
+                        id={tabId}
+                        parentId={tabsComponent.id}
+                        depth={depth}
+                        index={tabIndex}
+                        renderType={RENDER_TAB}
+                        availableColumnCount={availableColumnCount}
+                        columnWidth={columnWidth}
+                        onDropOnTab={handleDropOnTab}
+                        onDropPositionChange={handleGetDropPosition}
+                        onDragTab={handleDragggingTab}
+                        onHoverTab={() => handleClickTab(tabIndex)}
+                        isFocused={activeKey === tabId}
+                        isHighlighted={
+                          activeKey !== tabId &&
+                          tabsToHighlight?.includes(tabId)
+                        }
                       />
-                    )}
-                    <DashboardComponent
-                      id={tabId}
-                      parentId={tabsComponent.id}
-                      depth={depth}
-                      index={tabIndex}
-                      renderType={RENDER_TAB}
-                      availableColumnCount={availableColumnCount}
-                      columnWidth={columnWidth}
-                      onDropOnTab={handleDropOnTab}
-                      onDropPositionChange={handleGetDropPosition}
-                      onDragTab={handleDragggingTab}
-                      onHoverTab={() => handleClickTab(tabIndex)}
-                      isFocused={activeKey === tabId}
-                      isHighlighted={
-                        activeKey !== tabId && tabsToHighlight?.includes(tabId)
-                      }
+                    </>
+                  )
+                }
+                closeIcon={
+                  removeDraggedTab(tabId) ? (
+                    <></>
+                  ) : (
+                    <CloseIconWithDropIndicator
+                      role="button"
+                      tabIndex={tabIndex}
+                      showDropIndicators={showDropIndicators(tabIndex)}
                     />
-                  </>
-                )
-              }
-              closeIcon={
-                removeDraggedTab(tabId) ? (
-                  <></>
-                ) : (
-                  <CloseIconWithDropIndicator
-                    role="button"
-                    tabIndex={tabIndex}
-                    showDropIndicators={showDropIndicators(tabIndex)}
-                  />
-                )
-              }
-            >
-              {renderTabContent && (
-                <DashboardComponent
-                  id={tabId}
-                  parentId={tabsComponent.id}
-                  depth={depth} // see isValidChild.js for why tabs don't increment child depth
-                  index={tabIndex}
-                  renderType={RENDER_TAB_CONTENT}
-                  availableColumnCount={availableColumnCount}
-                  columnWidth={columnWidth}
-                  onResizeStart={onResizeStart}
-                  onResize={onResize}
-                  onResizeStop={onResizeStop}
-                  onDropOnTab={handleDropOnTab}
-                  isComponentVisible={
-                    selectedTabIndex === tabIndex && isCurrentTabVisible
-                  }
-                />
-              )}
-            </LineEditableTabs.TabPane>
-          ))}
+                  )
+                }
+              >
+                <TabContentWrapper>
+                  {renderTabContentFunction(tabId, tabIndex, isCurrentTab)}
+                </TabContentWrapper>
+              </LineEditableTabs.TabPane>
+            );
+          })}
         </LineEditableTabs>
       </StyledTabsContainer>
     ),
@@ -528,6 +939,9 @@ const Tabs = props => {
       onResizeStop,
       selectedTabIndex,
       isCurrentTabVisible,
+      tabDataStatus,
+      loadingTabs,
+      handleRetry,
     ],
   );
 

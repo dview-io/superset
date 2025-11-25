@@ -28,6 +28,9 @@ from flask_appbuilder.security.manager import AUTH_OAUTH
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
 from superset.dsense import flask_app_mutator
+from superset.custom_security.custom_security import DviewCustomSecurityManager
+from superset.custom_security.user_events import setup_user_hooks
+
 
 logger = logging.getLogger()
 
@@ -102,27 +105,65 @@ class CeleryConfig:
 CELERY_CONFIG = CeleryConfig
 logging.warning("CORTEX_ENDPOINT = %s", os.getenv("CORTEX_ENDPOINT"))
 
-COSMOS_ENDPOINT=os.getenv('COSMOS_ENDPOINT')
-DEFAULT_CATALOG=os.getenv('DEFAULT_CATALOG')
-LOGIN_USERNAME=os.getenv('LOGIN_USERNAME')
-LOGIN_PASSWORD=os.getenv('LOGIN_PASSWORD')
-ENABLE_CHATBOT=os.getenv('ENABLE_CHATBOT')
-CORTEX_INTERNAL_TOKEN=os.getenv('CORTEX_INTERNAL_TOKEN')
-DEFAULT_LABELIDS=["adhoc.__uploads__.loan_against_property"]
-ENABLE_DSENSE = os.getenv('ENABLE_DSENSE')
-DSENSE_URL=os.getenv('DSENSE_URL')
-RELATIONS_URL=os.getenv('RELATIONS_URL')
+COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT")
+DEFAULT_CATALOG = os.getenv("DEFAULT_CATALOG")
+LOGIN_USERNAME = os.getenv("LOGIN_USERNAME")
+LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD")
+ENABLE_CHATBOT = os.getenv("ENABLE_CHATBOT")
+CORTEX_INTERNAL_TOKEN = os.getenv("CORTEX_INTERNAL_TOKEN")
+DEFAULT_LABELIDS = ["adhoc.__uploads__.loan_against_property"]
+ENABLE_DSENSE = os.getenv("ENABLE_DSENSE")
+DSENSE_URL = os.getenv("DSENSE_URL")
+RELATIONS_URL = os.getenv("RELATIONS_URL")
+DEFAULT_SCHEMA_TAB = os.getenv("DEFAULT_SCHEMA_TAB")
+DEFAULT_CATALOG_TAB = os.getenv("DEFAULT_CATALOG_TAB")
+DEFAULT_PASSWORD_FOR_USER = os.getenv("DEFAULT_PASSWORD_FOR_USER")
+JOBWEAVER_URL = os.getenv("JOBWEAVER_URL")
+POLICIES_URL = os.getenv("POLICIES_URL")
+PIPELINE_URL = os.getenv("PIPELINE_URL")
+DSENSE_URL = os.getenv("DSENSE_URL")
+RELATIONS_URL = os.getenv("RELATIONS_URL")
+DAGS_URL = os.getenv("DAGS_URL")
+APPOLO_ORIGIN=os.getenv("APPOLO_ORIGIN")
+APPOLO_REFERER=os.getenv("APPOLO_REFERER")
 
-PROMPT_TEMPLATE="""
-fnrfn
+PROMPT_TEMPLATE = """
+{prompt}
 """
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True,"CORTEX_ENPOINT":os.getenv('CORTEX_ENDPOINT'),
-"COSMOS_ENDPOINT":COSMOS_ENDPOINT,
-"LOGIN_USERNAME":LOGIN_USERNAME,
-"LOGIN_PASSWORD":LOGIN_PASSWORD,
-"ENABLE_CHATBOT":ENABLE_CHATBOT,
-"CORTEX_INTERNAL_TOKEN":CORTEX_INTERNAL_TOKEN,"PROMPT_TEMPLATE":PROMPT_TEMPLATE ,"DEFAULT_LABELIDS":DEFAULT_LABELIDS,"ENABLE_DSENSE":ENABLE_DSENSE,"DSENSE_URL":DSENSE_URL,"RELATIONS_URL":RELATIONS_URL}
+DEFAULT_LABELIDS = ["adhoc.__uploads__.loan_against_property"]
+ENABLE_DSENSE = True
+DEFAULT_SCHEMA_TAB = "bi_tabs"
+DEFAULT_CATALOG_TAB = "adhoc"
+DEFAULT_SCHEMA_CHATBOT = "dsense"
+DEFAULT_TABLE_CHATBOT = "chat"
+
+
+FEATURE_FLAGS = {
+    "ALERT_REPORTS": True,
+    "CORTEX_ENPOINT": os.getenv("CORTEX_ENDPOINT"),
+    "COSMOS_ENDPOINT": COSMOS_ENDPOINT,
+    "LOGIN_USERNAME": LOGIN_USERNAME,
+    "LOGIN_PASSWORD": LOGIN_PASSWORD,
+    "ENABLE_CHATBOT": ENABLE_CHATBOT,
+    "CORTEX_INTERNAL_TOKEN": CORTEX_INTERNAL_TOKEN,
+    "PROMPT_TEMPLATE": PROMPT_TEMPLATE,
+    "DEFAULT_LABELIDS": DEFAULT_LABELIDS,
+    "ENABLE_DSENSE": ENABLE_DSENSE,
+    "DSENSE_URL": DSENSE_URL,
+    "RELATIONS_URL": RELATIONS_URL,
+    "DEFAULT_CATALOG_TAB": DEFAULT_CATALOG_TAB,
+    "DEFAULT_SCHEMA_TAB": DEFAULT_SCHEMA_TAB,
+    "DEFAULT_PASSWORD_FOR_USER": DEFAULT_PASSWORD_FOR_USER,
+    "DAGS_URL": DAGS_URL,
+    "JOBWEAVER_URL": JOBWEAVER_URL,
+    "PIPELINE_URL": PIPELINE_URL,
+    "POLICIES_URL": POLICIES_URL,
+    "DEFAULT_SCHEMA_CHATBOT": DEFAULT_SCHEMA_CHATBOT,
+    "DEFAULT_TABLE_CHATBOT": DEFAULT_TABLE_CHATBOT,
+    "APPOLO_ORIGIN":APPOLO_ORIGIN,
+    "APPOLO_REFERER":APPOLO_REFERER
+}
 
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
@@ -169,7 +210,14 @@ AUTH_DB = True
 AUTH_TYPE = AUTH_DB
 # AUTH_TYPE = AUTH_OAUTH
 
+import logging
 
+# Set up logging to capture credentials
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+CUSTOM_SECURITY_MANAGER = DviewCustomSecurityManager
 
 
 # Will allow user self registration, allowing to create Flask users from Authorized User
@@ -181,5 +229,4 @@ AUTH_USER_REGISTRATION = False
 AUTH_USER_REGISTRATION_ROLE = "Gamma"
 
 FAB_ADD_SECURITY_VIEWS = True
-
-
+setup_user_hooks()

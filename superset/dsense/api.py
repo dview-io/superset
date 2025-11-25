@@ -5,41 +5,35 @@ from flask_appbuilder.api import expose, permission_name, protect
 from superset.dsense.schemas import LoginSchema
 from superset.views.base_api import BaseSupersetApi, requires_json
 from flask_babel import lazy_gettext as _
-import requests  # or httpx for async support
-from werkzeug.datastructures import Headers # type: ignore
+import requests
+from werkzeug.datastructures import Headers  # type: ignore
+from flask_login import current_user
+from superset.custom_security.utils_file import get_org_info
+from flask import request
+
+
+referer = cosmos_url = app.config.get("APPOLO_REFERER")
+origin = cosmos_url = app.config.get("APPOLO_ORIGIN")
+
+headers = {"Content-Type": "application/json", "Origin": origin, "Referer": referer}
 
 
 class Dsense(BaseSupersetApi):
     """
     Custom API for handling user login by forwarding to COSMOS_URL.
     """
-    resource_name = 'dsense'
-    include_route_methods = {"dsense_login"}
+
+    resource_name = "dsense"
+    include_route_methods = {"dsense_login", "get_dview_login", "check_for_admin_user"}
     csrf_exempt = True
 
-    @expose('/login', methods=["POST"])
-    @requires_json
-   
-    def dsense_login(self)-> Response:
+    @expose("/login", methods=["GET"])
+    def dsense_login(self) -> Response:
         """
         Login API that forwards credentials to COSMOS_URL.
         ---
-        post:
+        get:
           summary: Forward login to COSMOS
-          requestBody:
-            description: User login data
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    email:
-                      type: string
-                      description: The email address of the user
-                    password:
-                      type: string
-                      description: The password for the user
           responses:
             200:
               description: Login successful
@@ -59,46 +53,135 @@ class Dsense(BaseSupersetApi):
               description: Internal server error
         """
         session = requests.Session()
-        payload = request.get_json(force=True)
-        
-        # Validate payload
-        schema = LoginSchema()
-        try:
-            data = schema.load(payload)
-        except ValidationError as err:
-            return self.response(400, message="Invalid input", result=err.messages, success=False)
 
         # Prepare COSMOS login request
-        cosmos_url = app.config.get("COSMOS_ENDPOINT")  # Ensure this is set in superset/config.py
+        cosmos_url = app.config.get(
+            "COSMOS_ENDPOINT"
+        )  # Ensure this is set in superset/config.py
         if not cosmos_url:
-            return self.response(500, message="COSMOS_URL not configured", success=False)
+            return self.response(
+                500, message="COSMOS_URL not configured", success=False
+            )
 
         login_endpoint = f"{cosmos_url}/orchestrator/auth/email-login"
         headers = {
             "Content-Type": "application/json",
+            "Origin": origin,
+            "Referer": referer,
         }
 
         try:
-            
             response = session.post(
                 login_endpoint,
-                json={"email": data["email"], "pass": data["password"]},
+                json={
+                    "email": current_user.email,
+                    "pass": app.config.get("LOGIN_PASSWORD"),
+                },
                 headers=headers,
             )
-            print(response.raw.headers)
-        
+
             for cookie in response.raw.headers.getlist("set-cookie"):
-                    token_cookie={"cookie_token":cookie}
+                token_cookie = {"cookie_token": cookie}
             body = json.dumps(token_cookie or {})
             flask_response = Response(
-               body,
-                status=response.status_code,
-                headers=dict(response.headers)
+                body, status=response.status_code, headers=dict(response.headers)
             )
-
 
             return flask_response
 
         except requests.exceptions.RequestException as e:
-            return self.response(500, message=f"COSMOS API error: {str(e)}", success=False)
-        
+            return self.response(
+                500, message=f"COSMOS API error: {str(e)}", success=False
+            )
+
+    @expose("/login/dview", methods=["GET"])
+    def get_dview_login(self) -> Response:
+        """
+        Returns the currently authenticated user's username and email.
+        ---
+        get:
+          summary: Get current authenticated user info
+          responses:
+            200:
+              description: Authenticated user details
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      email:
+                        type: string
+            401:
+              description: Not authenticated
+        """
+
+        if current_user.is_authenticated:
+            return jsonify(
+                {
+                    "email": current_user.email,
+                    "password": app.config.get("LOGIN_PASSWORD"),
+                }
+            )
+        return self.response(401, message="Not authenticated", success=False)
+
+    @expose("/dview/role", methods=["GET"])
+    def check_for_admin_user(self) -> Response:
+        """
+        Returns whether the currently authenticated user is an admin.
+        ---
+        get:
+          summary: Check if the current authenticated user is an admin
+          responses:
+            200:
+              description: User role info
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      email:
+                        type: string
+                      is_admin:
+                        type: boolean
+                      roles:
+                        type: array
+                        items:
+                          type: string
+            401:
+              description: Not authenticated
+        """
+
+        # call user list API
+        session = requests.Session()
+        cosmos_url = app.config.get("COSMOS_ENDPOINT")
+        orgName = get_org_info(current_user.email)
+
+        get_user_list_endpoint = f"{cosmos_url}/orchestrator/auth/users?email={current_user.email}&org={orgName}"
+
+        user_list_response = session.get(get_user_list_endpoint, headers=headers)
+
+        if user_list_response.status_code != 200:
+            msg = (
+                f"Cosmos get user list failed: "
+                f"{user_list_response.status_code} - {user_list_response.text}"
+            )
+            app.logger.error(msg)
+            return self.response(401, message="Not authenticated", success=False)
+
+        app.logger.info("Cosmos List successful. Proceeding with user lookup.")
+
+        matched_user = [
+            user
+            for user in user_list_response.json()
+            if user.get("emailAddress") == current_user.email
+        ]
+
+        if not matched_user:
+            return self.response(401, message="User not found", success=False)
+
+        user_roles = matched_user[0].get("userRoleList", [])
+        is_admin = "ROLE_SYS_ADMIN" in user_roles
+
+        return self.response(200, message="Success", is_admin=is_admin, success=True)

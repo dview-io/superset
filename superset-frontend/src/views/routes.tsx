@@ -22,6 +22,10 @@ import { lazy, ComponentType, ComponentProps } from 'react';
 // not lazy loaded since this is the home page.
 import Home from 'src/pages/Home';
 import DviewRelation from 'src/pages/Dsense/relation';
+import Pipeline from 'src/pages/Dsense/pipeline';
+import Dags from 'src/pages/Dsense/dags';
+import JobWeaver from 'src/pages/Dsense/jobweaver';
+import Policies from 'src/pages/Dsense/policies';
 
 const ChartCreation = lazy(
   () =>
@@ -237,6 +241,22 @@ export const routes: Routes = [
   {
     path: '/relations',
     Component: DviewRelation,
+  },
+  {
+    path: '/pipelines',
+    Component: Pipeline,
+  },
+  {
+    path: '/dags',
+    Component: Dags,
+  },
+  {
+    path: '/workflows',
+    Component: JobWeaver,
+  },
+  {
+    path: '/policy',
+    Component: Policies,
   },
 ];
 

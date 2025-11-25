@@ -7,4 +7,3 @@ def flask_app_mutator(app):
     # Setup API
     #
     appbuilder.add_api(Dsense)
-   

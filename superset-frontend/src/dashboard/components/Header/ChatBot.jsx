@@ -1,4 +1,4 @@
-import React, { useEffect, useState ,useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -28,6 +28,7 @@ import DsenseLogo from '../../../assets/images/icons/dsense-logo-sm.svg?react';
 const CORTEX_ENDPOINT_NEW = window.featureFlags.CORTEX_ENPOINT;
 const COSMOS_URL = window.featureFlags.COSMOS_ENDPOINT;
 const LOGIN_PASSWORD = window.featureFlags.LOGIN_PASSWORD;
+
 const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
 const labelIds = window.featureFlags.DEFAULT_LABELIDS;
@@ -113,6 +114,62 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Grow ref={ref} {...props} />;
 });
 
+const GreetingBubble = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(1.5),
+  borderRadius: '16px 16px 0 16px', // user-style shape
+  background: '#f3f0ff', // lavender
+  color: '#4a2c82', // purple text
+  boxShadow: theme.shadows[1],
+  fontSize: '0.95rem',
+  lineHeight: 1.5,
+
+  textAlign: 'left',
+}));
+
+// Logout Dialog Component
+const LogoutDialog = ({ open, onClose, onConfirm, isLoggingOut }) => {
+  React.useEffect(() => {
+    if (open) {
+      onConfirm();
+    }
+  }, [open, onConfirm]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => {}} // Prevent closing during logout process
+      aria-labelledby="logout-dialog-title"
+      aria-describedby="logout-dialog-description"
+      maxWidth="sm"
+      fullWidth
+      disableEscapeKeyDown
+      disableBackdropClick
+    >
+      <DialogTitle id="logout-dialog-title" style={{ textAlign: 'center' }}>
+        Session Expired
+      </DialogTitle>
+      <DialogContent style={{ padding: '20px 24px' }}>
+        <DialogContentText
+          id="logout-dialog-description"
+          style={{ textAlign: 'center', marginBottom: '16px' }}
+        >
+          Your session has expired. Logging out...
+        </DialogContentText>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
+          <CircularProgress size={20} />
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function ChatBotDialog({ dashboardId }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -123,7 +180,7 @@ export default function ChatBotDialog({ dashboardId }) {
   const [dashBoardChart, setDashboardCharts] = useState(null);
   const [dashBoardChartResponse, setDashboardChartsResponse] = useState(null);
   const [dashBoardChartError, setDashboardChartsError] = useState(null);
-  const [chartData, setChartData] = useState(null);
+
   const [chartSql, setChartSql] = useState(null);
   const [dataSourceId, setDatasourceId] = useState(null);
   const [chartSqlError, setChartSqlError] = useState(null);
@@ -132,322 +189,165 @@ export default function ChatBotDialog({ dashboardId }) {
   const [openAlert, setOpenAlert] = useState(false);
   const [loginToken, setLoginToken] = useState(null);
   const [datasetId, setDatasetId] = useState(null);
-  const [selectedChartId, setSelectedChartId] = useState(null);
-  const [userEmail, setUserEmail] = useState(null);
+
+  useEffect(() => {
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+
+    const token = getCookie('token');
+    const hasBearerToken = token?.startsWith('Bearer ') ?? false;
+    if (!hasBearerToken) {
+      const loginToDsense = async () => {
+        try {
+          await axios.get(`${SUPERSET_URL}/dsense/login`, {
+            withCredentials: true,
+          });
+        } catch (error) {
+          window.location.href = '/logout';
+        }
+      };
+
+      loginToDsense();
+    }
+  }, []);
+
+  // Logout dialog states
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
 
-  const hitLogin = async (retry = false) => {
-    if (userEmail && LOGIN_PASSWORD) {
-      if (loginToken && !retry) {
-        return loginToken;
-      }
+  // Logout function
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
 
-      const loginPayload = {
-        email: userEmail,
-        password: LOGIN_PASSWORD,
-      };
-
-      try {
-        const response = await axios.post(
-          `${SUPERSET_URL}/dsense/login`,
-          loginPayload,
-          {
-            withCredentials: true,
-          },
-        );
-        const token = response.data.cookie_token;
-        setLoginToken(token.replace(/^token=/, ''));
-        return token.replace(/^token=/, '');
-      } catch (error) {
-        const botResponse = {
-          data_type: 'TEXT',
-          explanation: null,
-          text: `Login failed. Select chart to retry.`,
-          sender: 'first',
-          timestamp: new Date(),
-          error: true,
-        };
-        setMessages(prev => [...prev, botResponse]);
-        return null;
-      }
-    }
-
-    return null;
-  };
-
-  const handleChange = (event, msg) => {
-    const selectedId = event.target.value;
-    setSelectedChartId(selectedId);
-    const chart = event.target.value;
-    if (chart) {
-      handleChartSelect(chart);
-    }
-  };
-
-  const sendDataset = async (retryFlag = false) => {
-    let retryCount = 0;
-    const fetchData = async () => {
-      retryCount += 1;
-      const token = await hitLogin(retryFlag);
-      let labelIdsVar = [];
-      let tablesDefault = [];
-      if (labelIds) {
-        labelIdsVar = labelIdsVar;
-      }
-      const payload = {
-        catalogs: [],
-        schemas: [],
-        tables: labelIds,
-        label_ids: [],
-      };
-      if (token) {
-        try {
-          const data = await callApi({
-            parseMethod: 'json',
-            url: `${CORTEX_ENDPOINT_NEW}/chat/`,
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            jsonPayload: payload,
-          });
-
-          setDatasetId(data.json.id);
-          if (!retryFlag) {
-            const botResponse = {
-              data_type: 'TEXT',
-              explanation: null,
-              text: `${selectedChart.name} chart is selected.\n Ask a question.`,
-              sender: 'first',
-              timestamp: new Date(),
-              error: true,
-            };
-
-            setMessages(prev => [...prev, botResponse]);
-          }
-        } catch (error) {
-          if (retryCount >= 3) {
-            const botResponse = {
-              data_type: 'TEXT',
-              explanation: null,
-              text: `Dsense request failed. Please retry after sometime!"`,
-              sender: 'bot',
-              timestamp: new Date(),
-              error: true,
-            };
-
-            setMessages(prev => [...prev, botResponse]);
-          } else {
-            await fetchData();
-          }
-        }
-      }
-    };
-    await fetchData();
-  };
-
-  React.useEffect(() => {
-    if (open && dashboardId) {
-      axios
-        .get(`${SUPERSET_URL}/dashboard/${dashboardId}/charts`)
-        .then(response => {
-          setDashboardChartsResponse(response.data);
-        })
-        .catch(error => {
-          setDashboardChartsError(error.message);
-        });
-    }
-  }, [open]);
-
-  function filterCharts(chartArray) {
-    const result = [];
-
-    chartArray.result.forEach(chart => {
-      const formData = chart.form_data;
-
-      if (Object.hasOwn(formData, 'column')) {
-        result.push(chart);
-      } else if (
-        Object.hasOwn(formData, 'groupby') &&
-        Array.isArray(formData.groupby) &&
-        formData.groupby.length === 1
-      ) {
-        result.push(chart);
-      } else if (
-        Object.hasOwn(formData, 'source') &&
-        Object.hasOwn(formData, 'target')
-      ) {
-        result.push(chart);
-      } else if (Object.hasOwn(formData, 'source')) {
-        result.push(chart);
-      } else if (Object.hasOwn(formData, 'target')) {
-        result.push(chart);
-      } else if (Object.hasOwn(formData, 'all_columns')) {
-        result.push(chart);
-      }
-    });
-
-    return { result: result };
-  }
-
-  React.useEffect(() => {
-    if (dashBoardChartResponse) {
-      setDashboardCharts(dashBoardChartResponse);
-    }
-  }, [dashBoardChartResponse]);
-
-  React.useEffect(() => {
-    if (chartData) {
-      let columns_value = [];
-      if (Object.hasOwn(chartData.result.form_data, 'column')) {
-        columns_value.push(chartData.result.form_data.column);
-      } else if (
-        Object.hasOwn(chartData.result.form_data, 'groupby') &&
-        chartData.result.form_data.groupby.length === 1
-      ) {
-        if (chartData.result.form_data.groupby.length === 1) {
-          columns_value = chartData.result.form_data.groupby;
-        }
-      } else if (
-        Object.hasOwn(chartData.result.form_data, 'source') &&
-        Object.hasOwn(chartData.result.form_data, 'target')
-      ) {
-        columns_value.push(
-          chartData.result.form_data.source,
-          chartData.result.form_data.target,
-        );
-      } else if (Object.hasOwn(chartData.result.form_data, 'source')) {
-        columns_value.push(chartData.result.form_data.source);
-      } else if (Object.hasOwn(chartData.result.form_data, 'target')) {
-        columns_value.push(chartData.result.form_data.target);
-      } else if (Object.hasOwn(chartData.result.form_data, 'all_columns')) {
-        columns_value = chartData.result.form_data.all_columns;
-      } else if (
-        chartData.result.form_data?.metric?.column?.column_name !== undefined
-      ) {
-        columns_value.push(
-          chartData.result.form_data.metric.column.column_name,
-        );
-      } else {
-        columns_value = ['*'];
-      }
-
-      const queries = [
-        {
-          annotation_layers: [],
-          applied_time_extras: {},
-          columns: columns_value,
-          extras: {},
-          filters: [],
-          granularity: '',
-          groupby: [],
-          time_range: chartData.result.form_data.time_range,
-        },
-      ];
-      const payload = {
-        datasource: { id: dataSourceId, type: 'table' },
-        force: false,
-        form_data: chartData.result.form_data,
-        queries: queries,
-        result_format: 'json',
-        result_type: 'query',
-      };
-      let slice_id_value = chartData.result.slice.slice_id;
-      slice_id_value = parseInt(slice_id_value, 10); // 10 is for decimal (base 10)
-      const formData = { slice_id: slice_id_value };
-      const formDataString = JSON.stringify(formData);
-      const encodedFormData = encodeURIComponent(formDataString);
-
-      axios
-        .post(
-          `${SUPERSET_URL}/chart/data?form_data=${encodedFormData}`,
-          payload,
-        )
-        .then(response => {
-          setChartSql(response.data);
-        })
-        .catch(error => {
-          setDashboardChartsError(error.message);
-        });
-    }
-  }, [chartData]);
-
-  const getSqlQuery = (datasource_id, slice_url) => {
-    axios
-      .get(`${SUPERSET_URL}${slice_url}`)
-      .then(response => {
-        setDatasourceId(datasource_id);
-        setChartData(response.data);
-      })
-      .catch(error => {
-        setDashboardChartsError(error.message);
-      });
-  };
-
-  React.useEffect(() => {
-    if (chartSql) {
-      const sql_payload = {
-        sql: chartSql.result[0].query,
-      };
-      sendDataset();
-    }
-  }, [chartSql]);
-
-  const handleChartSelect = chart => {
-    setSelectedChart(chart);
-    getSqlQuery(chart.datasource_id, chart.slice_url);
-  };
-
-  const fetchUserEmail = async () => {
     try {
-      const response = await axios.get(`${SUPERSET_URL}/me/`, {
-        withCredentials: true,
-      });
-      setUserEmail(response.data.result.email);
+      // Clear all local state
+      setLoginToken(null);
+      // setUserEmail(null);
+      setMessages([]);
+      setDatasetId(null);
+
+      // Wait a moment to show the logging out message
+      setTimeout(() => {
+        setIsLoggingOut(false);
+        setShowLogoutDialog(false);
+
+        // Redirect to login page or reload the page
+        window.location.href = '/logout'; // or window.location.reload();
+      }, 2000);
     } catch (error) {
+      console.error('Logout failed:', error);
+      setIsLoggingOut(false);
+
+      // Even if logout API fails, redirect to login
+      setTimeout(() => {
+        setShowLogoutDialog(false);
+        window.location.href = '/logout';
+      }, 1000);
+    }
+  };
+
+  // Function to trigger logout dialog
+  const triggerLogout = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const sendDataset = async () => {
+    let labelIdsVar = [];
+    let tablesDefault = [];
+    if (labelIds) {
+      labelIdsVar = labelIdsVar;
+    }
+    const payload = {
+      catalogs: [],
+      schemas: [],
+      tables: labelIds,
+      label_ids: [],
+    };
+
+    try {
+      let userName = null;
+      await axios.get(`${SUPERSET_URL}/me/`).then(response => {
+        userName = response.data?.result?.first_name;
+      });
+
+      const data = await callApi({
+        parseMethod: 'json',
+        url: `${CORTEX_ENDPOINT_NEW}/chat/`,
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        jsonPayload: payload,
+      });
+      setDatasetId(data.json.id);
+
+      const capitalizeName = name =>
+        name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : '';
+      const displayName = capitalizeName(userName);
+
       const botResponse = {
         data_type: 'TEXT',
         explanation: null,
-        text: `Unable to login email address.`,
+        text: `Hello <strong>${displayName}</strong>, welcome to Dsense Assistant 👋`,
         sender: 'first',
         timestamp: new Date(),
-        error: true,
+        error: false,
       };
+
       setMessages(prev => [...prev, botResponse]);
-      return null;
+    } catch (error) {
+      if (error.status >= 400 && error.status < 500) {
+        triggerLogout();
+      } else {
+        const botResponse = {
+          data_type: 'TEXT',
+          explanation: null,
+          text: `Dsense request failed. Please retry after sometime!"`,
+          sender: 'bot',
+          timestamp: new Date(),
+          error: true,
+        };
+
+        setMessages(prev => [...prev, botResponse]);
+      }
     }
   };
 
   React.useEffect(() => {
-    if (
-      dashBoardChart &&
-      dashBoardChart.result &&
-      Array.isArray(dashBoardChart.result)
-    ) {
-      const chartList = dashBoardChart.result.map(chart => ({
-        id: chart.id,
-        name: chart.slice_name,
-        form_data: chart.form_data,
-        datasource_id: chart.form_data.datasource.split('_')[0],
-        slice_url: chart.slice_url,
-      }));
+    if (open) {
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      }
 
-      setMessages(prev => [
-        ...prev,
-        {
-          text: 'Select a chart to explore key insights from the dashboard',
-          sender: 'user',
-          charts: chartList,
-          timestamp: new Date(),
-          error: false,
-        },
-      ]);
-      fetchUserEmail();
+      const token = getCookie('token');
+      const hasBearerToken = token?.startsWith('Bearer ') ?? false;
+      if (!hasBearerToken) {
+        const loginToDsense = async () => {
+          try {
+            await axios.get(`${SUPERSET_URL}/dsense/login`, {
+              withCredentials: true,
+            });
+          } catch (error) {
+            window.location.href = '/logout';
+          }
+        };
+
+        loginToDsense();
+      }
+      sendDataset();
     }
-  }, [dashBoardChart]);
+  }, [open]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -464,10 +364,8 @@ export default function ChatBotDialog({ dashboardId }) {
     setOpen(true);
     setUnread(0);
   };
+
   const sendDsenseMessage = async prompt => {
-    const sql_query = {
-      sql: chartSql.result[0].query,
-    };
     const new_prompt = promptTemplate.replace('{prompt}', prompt);
     try {
       const response_from_dsense = await callApi({
@@ -499,40 +397,23 @@ export default function ChatBotDialog({ dashboardId }) {
         }
       }, 1000);
     } catch (error) {
-      if (error.status >= 400 && error.status < 500) {
-        try {
-          await sendDataset(true);
-          const response_from_dsense = await callApi({
-            parseMethod: 'json',
-            url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${new_prompt}`,
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-          });
-
-          setTimeout(() => {
-            const botResponse = {
-              data_type: response_from_dsense.json?.result_type,
-              explanation: response_from_dsense.json?.sql_explanation,
-              text: response_from_dsense.json?.results,
-              sender: 'bot',
-              timestamp: new Date(),
-              error: false,
-            };
-
-            setMessages(prev => [...prev, botResponse]);
-            setIsTyping(false);
-
-            if (!open) {
-              setUnread(prev => prev + 1);
-            }
-          }, 1000);
-        } catch (error) {
-          setIsTyping(false);
-          const botResponse = {
+      if (error.status >= 400 && error.status < 500 && error.status != 422) {
+        // Trigger logout instead of console.log
+        triggerLogout();
+      } else {
+        setIsTyping(false);
+        let botResponse = {};
+        if (error.status == 422) {
+          botResponse = {
+            data_type: 'TEXT',
+            explanation: null,
+            text: 'Dsense request failed.Enter more than 6 characters!',
+            sender: 'bot',
+            timestamp: new Date(),
+            error: true,
+          };
+        } else {
+          botResponse = {
             data_type: 'TEXT',
             explanation: null,
             text: 'Dsense request failed. Please retry after sometime!',
@@ -540,19 +421,7 @@ export default function ChatBotDialog({ dashboardId }) {
             timestamp: new Date(),
             error: true,
           };
-
-          setMessages(prev => [...prev, botResponse]);
         }
-      } else {
-        setIsTyping(false);
-        const botResponse = {
-          data_type: 'TEXT',
-          explanation: null,
-          text: 'Dsense request failed. Please retry after sometime!',
-          sender: 'bot',
-          timestamp: new Date(),
-          error: true,
-        };
 
         setMessages(prev => [...prev, botResponse]);
       }
@@ -569,22 +438,29 @@ export default function ChatBotDialog({ dashboardId }) {
     setOpen(false);
     setMessages([]);
     setInput('');
-    setDashboardCharts(null);
-    setDashboardChartsError(null);
-    setChartData(null);
-    setChartSql(null);
     setDatasourceId(null);
-    setChartSqlError(null);
+
     setSelectedChart(null);
     setAlertContent('');
     setOpenAlert(false);
     setDatasetId(null);
     setSelectedChartId(null);
   };
+
   const handleAlertclose = () => setOpenAlert(false);
 
   const chat_result = msg => {
-    if (msg.data_type === 'TABLE') {
+    if (msg.sender === 'first') {
+      return (
+        <GreetingBubble>
+          <Typography
+            variant="body1"
+            sx={{ fontSize: '0.95rem', whiteSpace: 'pre-line' }}
+            dangerouslySetInnerHTML={{ __html: String(msg.text || '') }}
+          />
+        </GreetingBubble>
+      );
+    } else if (msg.data_type === 'TABLE') {
       return (
         <MessageBubbleBot
           style={{ display: 'flex', overflow: 'scroll', gap: 1 }}
@@ -634,7 +510,7 @@ export default function ChatBotDialog({ dashboardId }) {
       setOpenAlert(true);
       return null;
     }
-    if (input.trim() && selectedChart) {
+    if (input.trim()) {
       const userMessage = {
         text: input.trim(),
         sender: 'user',
@@ -644,11 +520,6 @@ export default function ChatBotDialog({ dashboardId }) {
       setInput('');
       setIsTyping(true);
       sendDsenseMessage(input);
-
-      // Simulated bot response with typing indicator
-    } else if (!selectedChart) {
-      setAlertContent('No chart is selected');
-      setOpenAlert(true);
     }
     setInput('');
   };
@@ -658,7 +529,7 @@ export default function ChatBotDialog({ dashboardId }) {
   };
 
   const alignMessage = sender => {
-    if (sender === 'user') {
+    if (sender === 'user' || sender === 'first') {
       return 'flex-end';
     } else if (sender === 'bot') {
       return 'flex-start';
@@ -668,7 +539,7 @@ export default function ChatBotDialog({ dashboardId }) {
   };
 
   return (
-    <>
+    <div id="dview-chatbot">
       <Badge badgeContent={unread} color="error">
         <ChatButton onClick={handleClickOpen} color="primary">
           <ChatIconWrapper>
@@ -746,34 +617,6 @@ export default function ChatBotDialog({ dashboardId }) {
                       <Typography variant="body1" style={{ fontSize: '13px' }}>
                         {msg.text}
                       </Typography>
-                      {msg.charts && (
-                        <Box sx={{ mt: 2, minWidth: 200 }}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel id="chart-select-label">
-                              Select Chart
-                            </InputLabel>
-                            <Select
-                              labelId="chart-select-label"
-                              value={selectedChartId}
-                              label="Select Chart"
-                              onChange={handleChange}
-                              MenuProps={{
-                                PaperProps: {
-                                  style: {
-                                    maxHeight: '20vh',
-                                  },
-                                },
-                              }}
-                            >
-                              {msg.charts.map(chart => (
-                                <MenuItem key={chart.id} value={chart}>
-                                  {chart.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Box>
-                      )}
                     </MessageBubble>
                   ) : (
                     chat_result(msg)
@@ -870,6 +713,8 @@ export default function ChatBotDialog({ dashboardId }) {
           </InputContainer>
         </DialogContent>
       </Dialog>
+
+      {/* Alert Dialog */}
       <Dialog
         open={openAlert}
         onClose={handleAlertclose}
@@ -891,6 +736,14 @@ export default function ChatBotDialog({ dashboardId }) {
           <Button onClick={handleAlertclose}>Close</Button>
         </DialogActions>
       </Dialog>
-    </>
+
+      {/* Logout Dialog */}
+      <LogoutDialog
+        open={showLogoutDialog}
+        onClose={() => !isLoggingOut && setShowLogoutDialog(false)}
+        onConfirm={handleLogout}
+        isLoggingOut={isLoggingOut}
+      />
+    </div>
   );
 }
