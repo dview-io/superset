@@ -356,6 +356,28 @@ const Tabs = props => {
       const orgDomain = emailid.split('@')[1] || 'NA';
       const orgName = orgDomain.split('.')[0] || 'NA';
 
+      const if_not_exists_create_table_statement = `CREATE TABLE IF NOT EXISTS  ${DEFAULT_CATALOG_TAB}.${DEFAULT_SCHEMA_TAB}.${tabId.replaceAll('-', '_')}${tabName} (id bigint) `;
+      const if_not_exists_create_table_statement_response = await fetch(
+        `${COSMOS_URL}/orchestrator/analytics/execute/dview?email=${emailid}&org=${orgName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            catalog: DEFAULT_CATALOG_TAB,
+            schema: DEFAULT_SCHEMA_TAB,
+            query: if_not_exists_create_table_statement,
+            table: '',
+          }),
+        },
+      );
+
+      if (!if_not_exists_create_table_statement_response.ok) {
+        throw new Error(
+          `HTTP error! status: ${if_not_exists_create_table_statement_response.status}`,
+        );
+      }
       // Step 3: Fetch data from Cosmos
       const response = await fetch(
         `${COSMOS_URL}/orchestrator/analytics/execute/dview?email=${emailid}&org=${orgName}`,
