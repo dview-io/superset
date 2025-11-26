@@ -62,6 +62,10 @@ export enum FeatureFlag {
   EnableDsense = 'ENABLE_DSENSE',
   EnableChatbot = 'ENABLE_CHATBOT',
   EnablePolicy = 'ENABLE_POLICY',
+  EnableRelation = 'ENABLE_RELATION',
+  EnableWorkflow = 'ENABLE_WORKFLOW',
+  EnablePipelines = 'ENABLE_PIPELINES',
+  EnableDags = 'ENABLE_DAGS',
 }
 
 export type ScheduleQueriesProps = {

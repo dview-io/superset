@@ -23,6 +23,10 @@ declare global {
     featureFlags: {
       ENABLE_DSENSE: boolean;
       ENABLE_CHATBOT: boolean;
+      ENABLE_RELATION: boolean;
+      ENABLE_WORKFLOW: boolean;
+      ENABLE_PIPELINES: boolean;
+      ENABLE_DAGS: boolean;
     };
   }
 }

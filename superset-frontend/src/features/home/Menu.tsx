@@ -314,6 +314,10 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     menu: [...data.menu],
   };
   const enableDsense = window.featureFlags.ENABLE_DSENSE;
+  const enableRelations = window.featureFlags.ENABLE_RELATION;
+  const enableWorkflow = window.featureFlags.ENABLE_WORKFLOW;
+  const enablePipelines = window.featureFlags.ENABLE_PIPELINES;
+  const enableDags = window.featureFlags.ENABLE_DAGS;
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
   const [enablePolicy, setEnablePolicy] = useState(false);
 
@@ -379,9 +383,17 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
 
   if (enableDsense && newMenuData.menu.length > 0) {
     newMenuData.menu.unshift(dsenseMenu);
+  }
+  if (enablePipelines && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewPipelines);
+  }
+  if (enableDags && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewDags);
+  }
+  if (enableRelations && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewRelation);
+  }
+  if (enableWorkflow && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewWorkflows);
   }
 
