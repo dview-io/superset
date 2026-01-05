@@ -313,6 +313,9 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     ...data,
     menu: [...data.menu],
   };
+
+  const enable_dview = window.featureFlags.ENABLE_DVIEW;
+
   const enableDsense = window.featureFlags.ENABLE_DSENSE;
   const enableRelations = window.featureFlags.ENABLE_RELATION;
   const enableWorkflow = window.featureFlags.ENABLE_WORKFLOW;
@@ -340,7 +343,11 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
       }
     }
 
-    checkAdminRole();
+    if (enable_dview) {
+      checkAdminRole();
+    } else {
+      setEnablePolicy(false);
+    }
   }, []);
 
   // Menu items that should go into settings dropdown
@@ -381,19 +388,19 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     url: '/workflows',
   };
 
-  if (enableDsense && newMenuData.menu.length > 0) {
+  if (enable_dview && enableDsense && newMenuData.menu.length > 0) {
     newMenuData.menu.unshift(dsenseMenu);
   }
-  if (enablePipelines && newMenuData.menu.length > 0) {
+  if (enable_dview && enablePipelines && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewPipelines);
   }
-  if (enableDags && newMenuData.menu.length > 0) {
+  if (enable_dview && enableDags && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewDags);
   }
-  if (enableRelations && newMenuData.menu.length > 0) {
+  if (enable_dview && enableRelations && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewRelation);
   }
-  if (enableWorkflow && newMenuData.menu.length > 0) {
+  if (enable_dview && enableWorkflow && newMenuData.menu.length > 0) {
     newMenuData.menu.push(dviewWorkflows);
   }
 
@@ -433,7 +440,7 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
   newMenuData.menu = cleanedMenu;
   newMenuData.settings = settings;
 
-  if (enablePolicy && newMenuData?.settings?.length > 0) {
+  if (enable_dview && enablePolicy && newMenuData?.settings?.length > 0) {
     const policy_child = [];
     const dviewPolicies = {
       name: 'Polices',

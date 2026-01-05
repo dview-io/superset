@@ -13,6 +13,9 @@ def setup_user_hooks():
     @event.listens_for(User, "after_insert")
     def user_created(mapper, connection, target):
 
+        if not bool(app.config.get("ENABLE_DVIEW")):
+            return
+
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
         user_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
 
@@ -112,6 +115,8 @@ def setup_user_hooks():
 
     @event.listens_for(User, "after_update")
     def user_updated(mapper, connection, target):
+        if not bool(app.config.get("ENABLE_DVIEW")):
+            return
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
         user_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
         session = requests.Session()
@@ -164,6 +169,8 @@ def setup_user_hooks():
 
     @event.listens_for(User, "after_delete")
     def user_deleted(mapper, connection, target):
+        if not bool(app.config.get("ENABLE_DVIEW")):
+            return
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
 
         email_id = target.email

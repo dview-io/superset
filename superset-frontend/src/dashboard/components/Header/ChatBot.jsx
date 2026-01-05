@@ -33,6 +33,8 @@ const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
 const labelIds = window.featureFlags.DEFAULT_LABELIDS;
 
+console.log('gaura chatbot');
+
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
   padding: theme.spacing(0.5),

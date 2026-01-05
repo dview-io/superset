@@ -66,6 +66,7 @@ export enum FeatureFlag {
   EnableWorkflow = 'ENABLE_WORKFLOW',
   EnablePipelines = 'ENABLE_PIPELINES',
   EnableDags = 'ENABLE_DAGS',
+  EnableDview = 'ENABLE_DVIEW',
 }
 
 export type ScheduleQueriesProps = {

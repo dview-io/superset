@@ -172,6 +172,7 @@ const Header = () => {
   const chartIds = useChartIds();
 
   const enableChatBot = window.featureFlags.ENABLE_CHATBOT;
+  const enable_dview = window.featureFlags.ENABLE_DVIEW;
 
   const extensionsRegistry = getExtensionsRegistry();
   const muiTheme = createTheme({
@@ -668,7 +669,7 @@ const Header = () => {
         ) : (
           <div css={actionButtonsStyle}>
             {NavExtension && <NavExtension />}
-            {enableChatBot && (
+            {enable_dview && enableChatBot && (
               <div style={{ marginRight: '4px' }}>
                 <ThemeProvider theme={muiTheme}>
                   <ChatBotDialog dashboardId={dashboardInfo.id} />

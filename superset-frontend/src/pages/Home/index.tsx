@@ -216,6 +216,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   }, []);
 
   const SUPERSET_URL = `${window.location.origin}/api/v1`;
+  const enable_dview = window.featureFlags?.ENABLE_DVIEW === true;
   useEffect(() => {
     const getCookie = (name: string): string | null => {
       const value = `; ${document.cookie}`;
@@ -241,7 +242,9 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
         }
       };
 
-      loginToDsense();
+      if (enable_dview) {
+        loginToDsense();
+      }
     }
   }, []);
 

@@ -338,11 +338,15 @@ const Tabs = props => {
 
   const DEFAULT_SCHEMA_CHATBOT = window.featureFlags.DEFAULT_SCHEMA_CHATBOT;
   const DEFAULT_TABLE_CHATBOT = window.featureFlags.DEFAULT_TABLE_CHATBOT;
+  const ENABLE_DVIEW = window.featureFlags.ENABLE_DVIEW;
 
   // API call function
   const fetchTabData = useCallback(async (tabId, tabName) => {
     try {
       setLoadingTabs(prev => new Set([...prev, tabId]));
+      if (!ENABLE_DVIEW) {
+        return;
+      }
 
       // Step 1: Get email
       const response_email = await axios.get(

@@ -27,6 +27,7 @@ declare global {
       ENABLE_WORKFLOW: boolean;
       ENABLE_PIPELINES: boolean;
       ENABLE_DAGS: boolean;
+      ENABLE_DVIEW: boolean;
     };
   }
 }
