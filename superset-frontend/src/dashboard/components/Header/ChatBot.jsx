@@ -33,8 +33,6 @@ const CORTEX_INTERNAL_TOKEN = window.featureFlags.CORTEX_INTERNAL_TOKEN;
 const promptTemplate = window.featureFlags.PROMPT_TEMPLATE;
 const labelIds = window.featureFlags.DEFAULT_LABELIDS;
 
-console.log('gaura chatbot');
-
 const ChatButton = styled(Button)(({ theme }) => ({
   minWidth: 'unset',
   padding: theme.spacing(0.5),
@@ -368,7 +366,10 @@ export default function ChatBotDialog({ dashboardId }) {
   };
 
   const sendDsenseMessage = async prompt => {
-    const new_prompt = promptTemplate.replace('{prompt}', prompt);
+    const new_prompt = encodeURIComponent(
+      promptTemplate.replace('{prompt}', prompt),
+    );
+
     try {
       const response_from_dsense = await callApi({
         parseMethod: 'json',

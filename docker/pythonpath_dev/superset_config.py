@@ -133,9 +133,41 @@ ENABLE_PIPELINES = os.getenv("ENABLE_PIPELINES")
 ENABLE_DAGS = os.getenv("ENABLE_DAGS")
 ENABLE_DVIEW = os.getenv("ENABLE_DVIEW")
 
-PROMPT_TEMPLATE = """
-{prompt}
+PROMPT_TEMPLATE_ALERTS = """
+You are generating SQL queries specifically for Apache Superset ALERTS.
+
+Based on the user’s natural language question, generate a SQL query that
+Apache Superset can execute to evaluate an alert and also return the condition and threshold value in results.
+
+SQL RULES (SUPERSET ALERTS)
+- The SQL must return exactly ONE row and ONE column
+- The returned column must be numeric
+- The query result will be evaluated by Superset as the alert metric
+- Use an aggregate function such as COUNT(*), SUM(), AVG(), MIN(), or MAX()
+- Apply alert filtering logic inside the WHERE clause
+- Use exactly ONE comparison condition inside the WHERE clause
+- Allowed comparison operators: >, <, >=, <=, =
+- Do NOT apply comparisons to the aggregate result
+- Do NOT use GROUP BY, JOIN, subqueries, or window functions
+- Do NOT include comments, markdown, or explanations in the SQL
+- If time is not mentioned, assume the last 24 hours
+- Add LIMIT 1
+- results must contain the keyword-> condition: <operator> and contain the keyword -> threshold: <numeric value>
+The condition and threshold MUST exactly match the WHERE clause in the SQL.
+
+=====================
+AVAIABLE CONDITIONS
+=====================
+--available_conditions
+
+=====================
+USER QUESTION
+=====================
+--alert_prompt
+
 """
+
+PROMPT_TEMPLATE = """"""
 
 DEFAULT_LABELIDS = ["adhoc.__uploads__.loan_against_property"]
 DEFAULT_SCHEMA_TAB = "bi_tabs"
@@ -173,6 +205,7 @@ FEATURE_FLAGS = {
     "ENABLE_PIPELINES": ENABLE_PIPELINES,
     "ENABLE_DAGS": ENABLE_DAGS,
     "ENABLE_DVIEW": bool(ENABLE_DVIEW),
+    "PROMPT_TEMPLATE_ALERTS": PROMPT_TEMPLATE_ALERTS,
 }
 
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True

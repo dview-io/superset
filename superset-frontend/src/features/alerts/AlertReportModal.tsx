@@ -25,6 +25,8 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import axios from 'axios';
 
 import {
   css,
@@ -38,10 +40,12 @@ import {
 } from '@superset-ui/core';
 import rison from 'rison';
 import { useSingleViewResource } from 'src/views/CRUD/hooks';
+// import Button from 'src/components/Button';
 
 import { InputNumber } from 'src/components/Input';
 import { Switch } from 'src/components/Switch';
 import Modal from 'src/components/Modal';
+
 import Collapse from 'src/components/Collapse';
 import TimezoneSelector from 'src/components/TimezoneSelector';
 import { propertyComparator } from 'src/components/Select/utils';
@@ -71,12 +75,14 @@ import {
 } from 'src/features/alerts/types';
 import { useSelector } from 'react-redux';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
+import { callApi } from '@superset-ui/core';
 import NumberInput from './components/NumberInput';
 import { AlertReportCronScheduler } from './components/AlertReportCronScheduler';
 import { NotificationMethod } from './components/NotificationMethod';
 import ValidatedPanelHeader from './components/ValidatedPanelHeader';
 import StyledPanel from './components/StyledPanel';
 import { buildErrorTooltipMessage } from './buildErrorTooltipMessage';
+import DsenseLogo from '../../assets/images/icons/dsense-logo-sm.svg';
 
 const TIMEOUT_MIN = 1;
 const TEXT_BASED_VISUALIZATION_TYPES = [
@@ -109,6 +115,30 @@ const DEFAULT_EXTRA_DASHBOARD_OPTIONS: Extra = {
     anchor: '',
   },
 };
+// eslint-disable-next-line theme-colors/no-literal-colors
+const IconWrapper = styled.div`
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+// eslint-disable-next-line theme-colors/no-literal-colors
+const Loader = styled.div`
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
 
 const CONDITIONS = [
   {
@@ -516,6 +546,304 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
   const [emailSubject, setEmailSubject] = useState<string>('');
   const [emailError, setEmailError] = useState(false);
 
+  // Updating alert/report state
+  const updateAlertState = (name: string, value: any) => {
+    setCurrentAlert(currentAlertData => ({
+      ...currentAlertData,
+      [name]: value,
+    }));
+  };
+
+  const onThresholdChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { target } = event;
+
+    const config = {
+      op: currentAlert ? currentAlert.validator_config_json?.op : undefined,
+      threshold: target.value,
+    };
+
+    updateAlertState('validator_config_json', config);
+  };
+
+  const onSQLChange = (value: string) => {
+    updateAlertState('sql', value || '');
+  };
+
+  const onConditionChange = (op: Operator) => {
+    setConditionNotNull(op === 'not null');
+
+    const config = {
+      op,
+      threshold: currentAlert
+        ? currentAlert.validator_config_json?.threshold
+        : undefined,
+    };
+
+    updateAlertState('validator_config_json', config);
+  };
+
+  // dview custom
+
+  const SUPERSET_URL = `${window.location.origin}/api/v1`;
+
+  const [question, setQuestion] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
+  const [schema, setSchema] = useState<SelectValue | null>(null);
+  const [table, setTable] = useState<SelectValue | null>(null);
+  const [tableOptions, setTableOptions] = useState<SelectValue[]>([]);
+
+  const [isDsenseEnabled, setIsDsenseEnabled] = useState(false);
+
+  const promptTemplate = (window.featureFlags as any).PROMPT_TEMPLATE_ALERTS;
+
+  const CORTEX_ENDPOINT_NEW = (window.featureFlags as any).CORTEX_ENPOINT;
+
+  const ENABLE_DVIEW_FLAG = (window.featureFlags as any).ENABLE_DVIEW;
+
+  const setDsenseError = (err: any, fallback = t('Something went wrong')) => {
+    let message = fallback;
+
+    if (typeof err === 'string') {
+      message = err;
+    } else if (err?.message) {
+      // eslint-disable-next-line prefer-destructuring
+      message = err.message;
+    } else if (err?.json?.message) {
+      // eslint-disable-next-line prefer-destructuring
+      message = err.json.message;
+    } else if (err?.json?.error) {
+      message = err.json.error;
+    }
+
+    setLlmError(message);
+
+    setTimeout(() => {
+      setLlmError(null);
+    }, 3000);
+  };
+
+  const ensureDsenseLogin = async (): Promise<void> => {
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) {
+        return parts.pop()?.split(';').shift();
+      }
+      return null;
+    };
+
+    const token = getCookie('token');
+    const hasBearerToken = token?.startsWith('Bearer ') ?? false;
+
+    // Already logged in → OK
+    if (hasBearerToken) return;
+
+    try {
+      await axios.get(`${SUPERSET_URL}/dsense/login`, {
+        withCredentials: true,
+      });
+    } catch (err) {
+      setDsenseError(err, t('Failed to login to Dsense'));
+    }
+  };
+
+  const createDsenseDataset = async (): Promise<number | null> => {
+    try {
+      const response = await callApi({
+        parseMethod: 'json',
+        url: `${CORTEX_ENDPOINT_NEW}/chat/`,
+        method: 'POST',
+        credentials: 'include',
+        mode: 'cors',
+        jsonPayload: {
+          catalogs: !currentAlert?.database?.label
+            ? []
+            : [currentAlert?.database?.label],
+          schemas: !schema
+            ? []
+            : [`${currentAlert?.database?.label}.${schema.value}`],
+          tables: !table
+            ? []
+            : [
+                `${currentAlert?.database?.label}.${schema?.value}.${table?.value}`,
+              ],
+          label_ids: [],
+          chat_type: 'DSENSE',
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.json.id;
+    } catch (err) {
+      setDsenseError(err);
+      return null; // ✅ REQUIRED
+    }
+  };
+
+  const conditionsList = CONDITIONS.map(c => c.value).join(', ');
+
+  const askDsense = async (datasetId: number, prompt: string) => {
+    const finalPrompt = promptTemplate?.includes('--alert_prompt')
+      ? promptTemplate
+          .replace('--alert_prompt', prompt)
+          .replace('--available_conditions', conditionsList)
+      : prompt;
+
+    const response = await callApi({
+      parseMethod: 'json',
+      url: `${CORTEX_ENDPOINT_NEW}/chat/${datasetId}/ask?prompt=${encodeURIComponent(
+        finalPrompt,
+      )}`,
+      mode: 'cors',
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // 🔴 THIS IS REQUIRED
+    if (!response?.json) {
+      setDsenseError(response);
+      return null;
+    }
+
+    return response.json;
+  };
+  const generateSqlFromQuestion = async (question: string) => {
+    await ensureDsenseLogin();
+
+    const datasetId = await createDsenseDataset();
+    if (!datasetId) return {};
+
+    const result = await askDsense(datasetId, question);
+    return result || {};
+  };
+
+  const handleQuestionSubmit = async () => {
+    if (!question.trim()) return;
+
+    setIsGenerating(true);
+    setLlmError(null);
+
+    try {
+      const result = await generateSqlFromQuestion(question);
+
+      // Fill SQL
+      if (result?.sql_query) {
+        onSQLChange(result.sql_query);
+      }
+
+      // Fill condition + threshold
+      if (result?.results) {
+        const text = result.results as string;
+
+        const conditionMatch = text.match(/condition:\s*(>=|<=|!=|=|>|<)/i);
+        const thresholdMatch = text.match(
+          /threshold:\s*([0-9]+(?:\.[0-9]+)?)/i,
+        );
+
+        if (!conditionMatch || !thresholdMatch) return;
+
+        const op = conditionMatch[1] as Operator;
+        const threshold = Number(thresholdMatch[1]);
+
+        updateAlertState(
+          'validator_type',
+          op === 'not null' ? 'not null' : 'operator',
+        );
+
+        updateAlertState('validator_config_json', {
+          op,
+          threshold: op === 'not null' ? undefined : threshold,
+        });
+
+        setConditionNotNull(op === 'not null');
+      }
+    } catch (err) {
+      setDsenseError(err, t('Failed to generate SQL'));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  const [schemaOptions, setSchemaOptions] = useState<SelectValue[]>([]);
+
+  const getSchemas = useCallback(async (databaseLabel: string) => {
+    try {
+      const resp = await axios.get(
+        `${SUPERSET_URL}/dsense/dview/schemas?catalog=${encodeURIComponent(
+          databaseLabel,
+        )}`,
+        { withCredentials: true },
+      );
+
+      const schemas = resp.data?.schemas || [];
+
+      setSchemaOptions(
+        schemas.map((s: string) => ({
+          label: s,
+          value: s,
+        })),
+      );
+    } catch (err) {
+      setDsenseError(err, t('Failed to fetch schemas'));
+    }
+  }, []);
+
+  const getTables = useCallback(
+    async (databaseLabel: string, schemaName: string) => {
+      if (!schemaName) return;
+
+      try {
+        const resp = await axios.get(
+          `${SUPERSET_URL}/dsense/dview/tables` +
+            `?catalog=${encodeURIComponent(databaseLabel)}` +
+            `&schema=${encodeURIComponent(schemaName)}`,
+          { withCredentials: true },
+        );
+
+        const tables = resp.data?.tables || [];
+
+        setTableOptions(
+          tables.map((t: string) => ({
+            label: t,
+            value: t,
+          })),
+        );
+      } catch (err) {
+        setDsenseError(err, t('Failed to fetch tables'));
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (currentAlert?.database?.label && isDsenseEnabled) {
+      getSchemas(currentAlert.database.label);
+      setSchema(null); // reset schema when DB changes
+    } else {
+      setSchemaOptions([]);
+      setSchema(null);
+    }
+  }, [currentAlert?.database?.label, isDsenseEnabled, getSchemas]);
+
+  const onSchemaChange = (value: SelectValue) => {
+    setSchema(value);
+    setTable(null); // reset table
+    setTableOptions([]);
+    if (currentAlert?.database?.label && value) {
+      getTables(currentAlert.database.label, value.value);
+    }
+    // fetch tables
+  };
+
+  const onTableChange = (value: SelectValue) => {
+    setTable(value);
+  };
+
   const onNotificationAdd = () => {
     setNotificationSettings([
       ...notificationSettings,
@@ -784,14 +1112,6 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
     [currentAlert?.database, sourceOptions],
   );
 
-  // Updating alert/report state
-  const updateAlertState = (name: string, value: any) => {
-    setCurrentAlert(currentAlertData => ({
-      ...currentAlertData,
-      [name]: value,
-    }));
-  };
-
   const loadSourceOptions = useMemo(
     () =>
       (input = '', page: number, pageSize: number) => {
@@ -1042,10 +1362,6 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
     }
   };
 
-  const onSQLChange = (value: string) => {
-    updateAlertState('sql', value || '');
-  };
-
   const onOwnersChange = (value: Array<SelectValue>) => {
     updateAlertState('owners', value || []);
   };
@@ -1071,30 +1387,6 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
 
   const onActiveSwitch = (checked: boolean) => {
     updateAlertState('active', checked);
-  };
-
-  const onConditionChange = (op: Operator) => {
-    setConditionNotNull(op === 'not null');
-
-    const config = {
-      op,
-      threshold: currentAlert
-        ? currentAlert.validator_config_json?.threshold
-        : undefined,
-    };
-
-    updateAlertState('validator_config_json', config);
-  };
-
-  const onThresholdChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { target } = event;
-
-    const config = {
-      op: currentAlert ? currentAlert.validator_config_json?.op : undefined,
-      threshold: target.value,
-    };
-
-    updateAlertState('validator_config_json', config);
   };
 
   const onLogRetentionChange = (retention: number) => {
@@ -1444,6 +1736,7 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
   const handleErrorUpdate = (hasError: boolean) => {
     setEmailError(hasError);
   };
+  const sqlEditorKey = isGenerating ? currentAlert?.sql : currentAlert?.id;
 
   return (
     <StyledModal
@@ -1590,15 +1883,161 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
                 />
               </div>
             </StyledInputContainer>
+
+            {isDsenseEnabled && (
+              <StyledInputContainer>
+                <div className="control-label">
+                  {t('Schema')}
+                  <span className="required">*</span>
+                </div>
+
+                <div className="input-container">
+                  <AsyncSelect
+                    ariaLabel={t('Schema')}
+                    name="schema"
+                    placeholder={t('Select schema')}
+                    value={schema || undefined}
+                    options={() =>
+                      Promise.resolve({
+                        data: schemaOptions,
+                        totalCount: schemaOptions.length,
+                      })
+                    }
+                    onChange={onSchemaChange}
+                  />
+                </div>
+              </StyledInputContainer>
+            )}
+
+            {isDsenseEnabled && (
+              <StyledInputContainer>
+                <div className="control-label">{t('Table')}</div>
+
+                <div className="input-container">
+                  <AsyncSelect
+                    ariaLabel={t('Table')}
+                    name="table"
+                    placeholder={t('Select table')}
+                    value={table || undefined}
+                    options={() =>
+                      Promise.resolve({
+                        data: tableOptions,
+                        totalCount: tableOptions.length,
+                      })
+                    }
+                    onChange={onTableChange}
+                  />
+                </div>
+              </StyledInputContainer>
+            )}
+
+            {isDsenseEnabled && (
+              <StyledInputContainer>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    marginBottom: 8,
+                    alignItems: 'center',
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder={t('Ask a question to generate SQL')}
+                    value={question}
+                    onChange={e => {
+                      setQuestion(e.target.value);
+                      if (llmError) setLlmError(null);
+                    }}
+                    disabled={isGenerating}
+                    style={{ flex: 1 }}
+                  />
+
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    title={t('Generate SQL from question')}
+                    onClick={() => {
+                      if (!question.trim() || isGenerating) return;
+                      handleQuestionSubmit();
+                    }}
+                    style={{
+                      padding: '2px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+
+                      // eslint-disable-next-line theme-colors/no-literal-colors
+                      backgroundColor: '#6f42c1', // Superset-like purple
+                      borderRadius: 6,
+
+                      cursor:
+                        !question.trim() || isGenerating
+                          ? 'not-allowed'
+                          : 'pointer',
+                      opacity:
+                        !question.trim() ||
+                        isGenerating ||
+                        !currentAlert?.database?.value ||
+                        !schema
+                          ? 0.6
+                          : 1,
+                    }}
+                  >
+                    <IconWrapper>
+                      {isGenerating ? (
+                        <Loader />
+                      ) : (
+                        <DsenseLogo
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'block',
+                          }}
+                        />
+                      )}
+                    </IconWrapper>
+                  </div>
+                </div>
+              </StyledInputContainer>
+            )}
+            {llmError && (
+              <div
+                style={{
+                  marginTop: 6,
+                  color: '#d32f2f', // Superset error red
+                  fontSize: '12px',
+                }}
+              >
+                {llmError}
+              </div>
+            )}
+
             <StyledInputContainer>
-              <div className="control-label">
-                {t('SQL Query')}
-                <StyledTooltip
-                  tooltip={t(
-                    'The result of this query must be a value capable of numeric interpretation e.g. 1, 1.0, or "1" (compatible with Python\'s float() function).',
-                  )}
-                />
-                <span className="required">*</span>
+              <div
+                className="control-label"
+                style={{ display: 'flex', justifyContent: 'space-between' }}
+              >
+                <div>
+                  {t('SQL Query')}
+                  <StyledTooltip
+                    tooltip={t(
+                      'The result of this query must be a value capable of numeric interpretation e.g. 1, 1.0, or "1" (compatible with Python\'s float() function).',
+                    )}
+                  />
+                  <span className="required">*</span>
+                </div>
+                {ENABLE_DVIEW_FLAG && (
+                  <div>
+                    <span>Dsense</span>
+                    <Switch
+                      style={{ marginLeft: '3px' }}
+                      checked={isDsenseEnabled}
+                      onChange={checked => setIsDsenseEnabled(checked)}
+                      size="small"
+                    />
+                  </div>
+                )}
               </div>
               <TextAreaControl
                 name="sql"
@@ -1607,9 +2046,9 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
                 minLines={15}
                 maxLines={15}
                 onChange={onSQLChange}
-                readOnly={false}
-                initialValue={resource?.sql}
-                key={currentAlert?.id}
+                readOnly={isGenerating}
+                initialValue={currentAlert?.sql || ''}
+                key={sqlEditorKey}
               />
             </StyledInputContainer>
             <div className="inline-container wrap">

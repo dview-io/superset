@@ -24,7 +24,13 @@ class Dsense(BaseSupersetApi):
     """
 
     resource_name = "dsense"
-    include_route_methods = {"dsense_login", "get_dview_login", "check_for_admin_user"}
+    include_route_methods = {
+        "dsense_login",
+        "get_dview_login",
+        "check_for_admin_user",
+        "get_schemas",
+        "get_tables",
+    }
     csrf_exempt = True
 
     @expose("/login", methods=["GET"])
@@ -79,10 +85,11 @@ class Dsense(BaseSupersetApi):
                 },
                 headers=headers,
             )
+            token_cookie = {}
 
             for cookie in response.raw.headers.getlist("set-cookie"):
                 token_cookie = {"cookie_token": cookie}
-            body = json.dumps(token_cookie or {})
+            body = json.dumps(token_cookie)
             flask_response = Response(
                 body, status=response.status_code, headers=dict(response.headers)
             )
@@ -185,3 +192,262 @@ class Dsense(BaseSupersetApi):
         is_admin = "ROLE_SYS_ADMIN" in user_roles
 
         return self.response(200, message="Success", is_admin=is_admin, success=True)
+
+    @expose("/login/dview", methods=["GET"])
+    def get_dview_login(self) -> Response:
+        """
+        Returns the currently authenticated user's username and email.
+        ---
+        get:
+          summary: Get current authenticated user info
+          responses:
+            200:
+              description: Authenticated user details
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      email:
+                        type: string
+            401:
+              description: Not authenticated
+        """
+
+        if current_user.is_authenticated:
+            return jsonify(
+                {
+                    "email": current_user.email,
+                    "password": app.config.get("LOGIN_PASSWORD"),
+                }
+            )
+        return self.response(401, message="Not authenticated", success=False)
+
+    @expose("/dview/schemas", methods=["GET"])
+    def get_schemas(self) -> Response:
+        """
+        Fetch schemas for Dsense for the current user/org.
+        ---
+        get:
+          summary: Get available schemas for Dsense
+          parameters:
+            - in: query
+              name: catalog
+              schema:
+                type: string
+              required: true
+              description: Catalog / database name
+          responses:
+            200:
+              description: Schema list
+            401:
+              description: Not authenticated
+            500:
+              description: Failed to fetch schemas
+        """
+
+        # ------------------------
+        # Auth check
+        # ------------------------
+
+        catalog = request.args.get("catalog")
+        if not catalog:
+            return self.response(
+                400,
+                message="Missing required query param: catalog",
+                success=False,
+            )
+
+        cosmos_url = app.config.get("COSMOS_ENDPOINT")
+        if not cosmos_url:
+            app.logger.error("COSMOS_ENDPOINT not configured")
+            return self.response(
+                500,
+                message="COSMOS endpoint not configured",
+                success=False,
+            )
+
+        org_name = get_org_info(current_user.email)
+
+        endpoint = (
+            f"{cosmos_url}/orchestrator/analytics/run-query/dview"
+            f"?email={current_user.email}&org={org_name}"
+        )
+
+        headers = {
+            "Content-Type": "application/json",
+            "Origin": app.config.get("APPOLO_ORIGIN"),
+            "Referer": app.config.get("APPOLO_REFERER"),
+        }
+
+        try:
+            resp = requests.post(
+                endpoint,
+                headers=headers,
+                json={"catalog": catalog},
+                timeout=10,
+            )
+        except requests.RequestException:
+            app.logger.exception("Failed to reach Cosmos for schema list")
+            return self.response(
+                500,
+                message="Failed to reach Cosmos service",
+                success=False,
+            )
+
+        if resp.status_code != 200:
+            app.logger.error(
+                "Cosmos schema fetch failed: %s - %s",
+                resp.status_code,
+                resp.text,
+            )
+            return self.response(
+                500,
+                message="Failed to fetch schemas",
+                success=False,
+            )
+
+        try:
+            payload = resp.json()
+        except ValueError:
+            app.logger.error("Invalid JSON returned from Cosmos")
+            return self.response(
+                500,
+                message="Invalid response from Cosmos",
+                success=False,
+            )
+
+        # Normalize Cosmos response
+        schemas = []
+        if payload:
+            for pay in payload:
+                schemas.append(pay["Schema"])
+        # schemas = payload.get("schemas") or payload.get("result") or []
+
+        return self.response(
+            200,
+            success=True,
+            schemas=schemas,
+        )
+
+    @expose("/dview/tables", methods=["GET"])
+    def get_tables(self) -> Response:
+        """
+        Fetch tables for Dsense for the current user/org.
+        ---
+        get:
+          summary: Get available tables for Dsense
+          parameters:
+            - in: query
+              name: catalog
+              schema:
+                type: string
+              required: true
+              description: Catalog / database name
+            - in: query
+              name: schema
+              schema:
+                type: string
+              required: true
+              description: Schema name
+          responses:
+            200:
+              description: Table list
+            401:
+              description: Not authenticated
+            500:
+              description: Failed to fetch tables
+        """
+
+        # ------------------------
+        # Auth check
+        # ------------------------
+
+        catalog = request.args.get("catalog")
+        schema = request.args.get("schema")
+        if not catalog:
+            return self.response(
+                400,
+                message="Missing required query param: catalog",
+                success=False,
+            )
+        if not schema:
+            return self.response(
+                400,
+                message="Missing required query param: schema",
+                success=False,
+            )
+
+        cosmos_url = app.config.get("COSMOS_ENDPOINT")
+        if not cosmos_url:
+            app.logger.error("COSMOS_ENDPOINT not configured")
+            return self.response(
+                500,
+                message="COSMOS endpoint not configured",
+                success=False,
+            )
+
+        org_name = get_org_info(current_user.email)
+
+        endpoint = (
+            f"{cosmos_url}/orchestrator/analytics/run-query/dview"
+            f"?email={current_user.email}&org={org_name}"
+        )
+
+        headers = {
+            "Content-Type": "application/json",
+            "Origin": app.config.get("APPOLO_ORIGIN"),
+            "Referer": app.config.get("APPOLO_REFERER"),
+        }
+
+        try:
+            resp = requests.post(
+                endpoint,
+                headers=headers,
+                json={"catalog": catalog, "schema": schema},
+                timeout=10,
+            )
+        except requests.RequestException:
+            app.logger.exception("Failed to reach Cosmos for table list")
+            return self.response(
+                500,
+                message="Failed to reach Cosmos service",
+                success=False,
+            )
+
+        if resp.status_code != 200:
+            app.logger.error(
+                "Cosmos table fetch failed: %s - %s",
+                resp.status_code,
+                resp.text,
+            )
+            return self.response(
+                500,
+                message="Failed to fetch tables",
+                success=False,
+            )
+
+        try:
+            payload = resp.json()
+        except ValueError:
+            app.logger.error("Invalid JSON returned from Cosmos")
+            return self.response(
+                500,
+                message="Invalid response from Cosmos",
+                success=False,
+            )
+
+        # Normalize Cosmos response
+        tables = []
+        if payload:
+            for pay in payload:
+                tables.append(pay["Table"])
+        # schemas = payload.get("schemas") or payload.get("result") or []
+
+        return self.response(
+            200,
+            success=True,
+            tables=tables,
+        )
