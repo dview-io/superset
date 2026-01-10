@@ -17,13 +17,9 @@ def setup_user_hooks():
             return
 
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
-        user_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
 
         email_id = target.email
         orgName = get_org_info(email_id)
-        print(
-            f"New user created: {target.username}{target.password}{target.first_name}{orgName}"
-        )
 
         session = requests.Session()
         if not cosmos_url:
@@ -36,7 +32,7 @@ def setup_user_hooks():
                 user_register_endpoint,
                 json={
                     "email": target.email,
-                    "password": user_password,
+                    "password": target.password,
                     "designation": "SDE",
                     "phone": "123456789",
                     "purpose": "Superset",
@@ -118,7 +114,7 @@ def setup_user_hooks():
         if not bool(app.config.get("ENABLE_DVIEW")):
             return
         cosmos_url = app.config.get("COSMOS_ENDPOINT")
-        user_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
+        user_password = target.password
         session = requests.Session()
         email_id = target.email
         orgName = get_org_info(email_id)
@@ -133,7 +129,7 @@ def setup_user_hooks():
                 login_endpoint,
                 json={
                     "email": target.email,
-                    "pass": app.config.get("DEFAULT_PASSWORD_FOR_USER"),
+                    "pass": user_password,
                 },
                 headers=headers,
             )
@@ -156,6 +152,7 @@ def setup_user_hooks():
             )
 
             if response.status_code != 200:
+
                 msg = f"Cosmos registration failed: {response.status_code} - {response.text}"
                 app.logger.error(msg)
                 raise Exception(msg)

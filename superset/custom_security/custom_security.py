@@ -9,17 +9,14 @@ class DviewCustomSecurityManager(SupersetSecurityManager):
 
         if bool(app.config.get("ENABLE_DVIEW")):
             dview_password = app.config.get("DEFAULT_PASSWORD_FOR_USER")
-             # Get the user from database to access hashed password
+            # Get the user from database to access hashed password
             user = self.find_user(username=username)
             if user:
-                cosmos_success = self.login_to_dview(user.email, dview_password)
+                cosmos_success = self.login_to_dview(user.email, user.password)
 
                 # If cosmos login failed, don't proceed with normal auth
                 if not cosmos_success:
                     return None
-
-       
-
 
         return super().auth_user_db(username, password)
 

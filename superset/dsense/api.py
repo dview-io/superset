@@ -81,7 +81,7 @@ class Dsense(BaseSupersetApi):
                 login_endpoint,
                 json={
                     "email": current_user.email,
-                    "pass": app.config.get("LOGIN_PASSWORD"),
+                    "pass": current_user.password,
                 },
                 headers=headers,
             )
@@ -128,7 +128,7 @@ class Dsense(BaseSupersetApi):
             return jsonify(
                 {
                     "email": current_user.email,
-                    "password": app.config.get("LOGIN_PASSWORD"),
+                    "password": current_user.password,
                 }
             )
         return self.response(401, message="Not authenticated", success=False)
@@ -220,7 +220,7 @@ class Dsense(BaseSupersetApi):
             return jsonify(
                 {
                     "email": current_user.email,
-                    "password": app.config.get("LOGIN_PASSWORD"),
+                    "password": current_user.password,
                 }
             )
         return self.response(401, message="Not authenticated", success=False)
